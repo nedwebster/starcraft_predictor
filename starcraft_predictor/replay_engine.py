@@ -87,10 +87,16 @@ class ReplayEngine:
         return data
 
     @classmethod
-    def build_batch(cls, replays: list):
+    def build_batch(cls, replays: list) -> pd.DataFrame:
         """Convert a list of replays into a single batch dataframe"""
-        # TODO: add functionality
-        pass
+
+        # initialise empty list to append replay dataframes to
+        dataframes = []
+
+        for replay in replays:
+            dataframes.append(cls.build_dataframe(replay))
+
+        return pd.concat(dataframes)
 
     @classmethod
     def _init_empty_frame(cls) -> pd.DataFrame:
