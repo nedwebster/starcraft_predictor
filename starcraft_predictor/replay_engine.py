@@ -1,8 +1,9 @@
 from typing import List
 
 import pandas as pd
-import sc2reader
 from sc2reader.events.tracker import PlayerStatsEvent
+
+from starcraft_predictor.replay import Replay
 
 
 class ReplayEngine:
@@ -47,33 +48,23 @@ class ReplayEngine:
         for player_number in [1, 2]
     ]
 
-    @staticmethod
-    def load_replay(path: str) -> sc2reader.resources.Replay:
-        """Load a sc2 replay file using sc2reader"""
-
-        if not isinstance(path, str):
-            raise TypeError("path must be a str")
-
-        if not path.endswith(".SC2Replay"):
-            raise ValueError("path must point to a .SC2Replay file")
-
-        return sc2reader.load_replay(path)
-
     @classmethod
     def build_dataframe(
-        cls, replay: sc2reader.resources.Replay
+        cls, replay: Replay
     ) -> pd.DataFrame:
         """Build a dataframe of structured data from a replay object"""
 
         # TODO: update to use custom replay class when implemented
-        if not isinstance(replay, sc2reader.resources.Replay):
-            raise TypeError("replay must be a sc2reader.resources.Replay")
+        if not isinstance(replay, Replay):
+            raise TypeError(
+                "replay must be a starcraft_predictor.replay.Replay"
+            )
 
         # initialise empty dataframe with correct columns
         data = cls._init_empty_frame()
 
         # get all player events from replay
-        player_events = cls._get_player_stats_events(replay)
+        player_events = replay.get_player_events()
 
         # each timestamp has two events, one for each player
         num_of_events = int(len(player_events) / 2)
@@ -89,9 +80,9 @@ class ReplayEngine:
         # update table with replay metadata
         # TODO: update replay references when replay class is implemented
         data["filehash"] = replay.filehash
-        data["winner"] = replay.winner.number
-        data["player_1_race"] = replay.players[0].play_race
-        data["player_2_race"] = replay.players[1].play_race
+        data["winner"] = replay.winner
+        data["player_1_race"] = replay.player_1_race
+        data["player_2_race"] = replay.player_2_race
 
         return data
 
@@ -121,32 +112,6 @@ class ReplayEngine:
             ]
             + cls.PLAYER_DATA_FIELDS
         )
-
-    @staticmethod
-    def _get_player_stats_events(replay: sc2reader.resources.Replay) -> list:
-        """Get all events that are relevant to the players statistics."""
-
-        player_stats_events = [
-            event for event in replay.events
-            if event.name == "PlayerStatsEvent"
-        ]
-
-        def events_hotfix(player_events: List[PlayerStatsEvent]):
-            """Remove any non-paired events from the end of the player
-            events list. Non-paired are any timestamped events where
-            only one player has a player event"""
-
-            for i, event in enumerate(player_events):
-
-                if i == len(player_events):
-                    return player_events
-                else:
-                    if event.player == player_events[i + 1].player:
-                        return player_events[:i]
-
-        fixed_player_events = events_hotfix(player_stats_events)
-
-        return fixed_player_events
 
     @classmethod
     def _process_event(cls, event: List[PlayerStatsEvent]) -> pd.Series:
