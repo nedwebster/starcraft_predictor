@@ -100,4 +100,7 @@ sc2_preprocessing_pipeline = Pipeline([
             drop_cols=True,
         ),
     ),
+    (
+        "passthrough", "passthrough",
+    ),
 ])
