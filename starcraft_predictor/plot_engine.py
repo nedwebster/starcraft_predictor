@@ -10,6 +10,8 @@ from plotnine.themes import (element_line, element_text,
 from plotnine.options import get_option
 
 
+# code for ThemeStarcraft modified from:
+# https://plotnine.readthedocs.io/en/stable/_modules/plotnine/themes/theme_gray.html
 class ThemeStarcraft(theme):
     """
     Custom theme for Starcraft 2 flavored plots.
