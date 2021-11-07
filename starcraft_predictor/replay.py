@@ -13,7 +13,7 @@ class Replay:
         winner: int,
         player_1_race: str,
         player_2_race: str,
-        events: List[sc2reader.events],
+        events: list,
     ):
 
         self._filehash = filehash
