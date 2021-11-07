@@ -56,7 +56,7 @@ class Replay:
 
         return cls(
             filehash=replay.filehash,
-            winner=replay.winner.number,
+            winner=replay.winner.number - 1,  # convert winner to [0, 1]
             player_1_race=replay.players[0].play_race,
             player_2_race=replay.players[1].play_race,
             events=replay.events,
