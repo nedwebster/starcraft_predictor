@@ -11,6 +11,8 @@ pydantic = "*"
 xgboost = "*"
 matplotlib = "*"
 seaborn = "*"
+ipykernel = "*"
+jupyter = "*"
 
 [dev-packages]
 flake8 = "*"
