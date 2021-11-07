@@ -1,21 +1,32 @@
 import pandas as pd
 import numpy as np
 from numpy.random import rand
-from plotnine import (ggplot, aes, geom_line,
-                      theme, xlab, ylab, geom_hline,
-                      scale_color_manual, guides, ggtitle,
-                      scale_x_continuous)
-from plotnine.themes import (element_line, element_text,
-                             element_blank, element_rect)
+from plotnine import (
+    ggplot,
+    aes,
+    geom_line,
+    theme,
+    xlab,
+    ylab,
+    geom_hline,
+    scale_color_manual,
+    guides,
+    ggtitle,
+    scale_x_continuous,
+)
+from plotnine.themes import (
+    element_line, element_text, element_blank, element_rect,)
 from plotnine.options import get_option
 
 
-# code for ThemeStarcraft modified from:
-# https://plotnine.readthedocs.io/en/stable/_modules/plotnine/themes/theme_gray.html
 class ThemeStarcraft(theme):
     """
     Custom theme for Starcraft 2 flavored plots.
     """
+
+    # code for ThemeStarcraft modified from:
+    # https://plotnine.readthedocs.io/en/stable/_modules/plotnine/themes/theme_gray.html
+
     def __init__(self, base_size=11, base_family=None):
         base_family = base_family or get_option('base_family')
         half_line = base_size/2
