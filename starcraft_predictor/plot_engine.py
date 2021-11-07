@@ -119,7 +119,8 @@ class ThemeStarcraft(theme):
                                     weight="heavy"),
             plot_margin=None,
 
-            complete=True)
+            complete=True,
+        )
 
 
 class PlotEngine:
@@ -134,7 +135,6 @@ class PlotEngine:
         "p": "#0C48CC",
         "t": "#F40404",
         "z": "#88409C",
-
     }
 
     def __add_threshold_crossings(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -162,7 +162,6 @@ class PlotEngine:
             # np.interp requires monotonic increasing xp array
             if xp[0] > xp[-1]:
                 xp = xp[::-1]
-                # fp = fp[::-1]
 
             # determine the crossing point in seconds
             crossing_point = np.interp(0.5, xp, fp)
@@ -173,7 +172,7 @@ class PlotEngine:
                 "win_prob": [0.5],
                 "seconds_shifted": [df.iloc[row]["seconds_shifted"]],
                 "win_prob_shifted": [df.iloc[row]["win_prob_shifted"]]
-                })
+            })
 
             # update original row
             df.at[row, "win_prob_shifted"] = 0.5
@@ -185,8 +184,10 @@ class PlotEngine:
         return df
 
     def __stack_df(
-        self, df: pd.DataFrame,
-        p1_handle: str = "Player 1", p2_handle: str = "Player 2"
+        self,
+        df: pd.DataFrame,
+        p1_handle: str = "Player 1",
+        p2_handle: str = "Player 2"
     ) -> pd.DataFrame:
 
         # create a binary "predicted_winner" column
@@ -212,9 +213,13 @@ class PlotEngine:
         return df.append(df_p2)
 
     def win_probability_plot(
-        self, df: pd.DataFrame, p1_race: str, p2_race: str,
+        self,
+        df: pd.DataFrame,
+        p1_race: str,
+        p2_race: str,
         match_id: str = "TESTID",
-        p1_handle: str = "Player 1", p2_handle: str = "Player 2"
+        p1_handle: str = "Player 1",
+        p2_handle: str = "Player 2"
     ) -> ggplot:
         """
         Plots a win probability line graph.
@@ -239,12 +244,14 @@ class PlotEngine:
 
         # build ggplot object
         p = (
-            ggplot(df, aes(
-                x="seconds",
-                y="win_prob",
-                color="Player",
-                alpha="predicted_winner"
-                )
+            ggplot(
+                df,
+                aes(
+                    x="seconds",
+                    y="win_prob",
+                    color="Player",
+                    alpha="predicted_winner",
+                ),
             )
             + geom_hline(yintercept=0.5, linetype="dashed", color="grey")
             + geom_line()
@@ -260,7 +267,7 @@ class PlotEngine:
             + guides(alpha=False)
         )
 
-        return p  
+        return p
 
 
 if __name__ == "__main__":
@@ -286,6 +293,6 @@ if __name__ == "__main__":
         match_id="111111",
         p1_handle="i_play_a_skill_race",
         p2_handle="i_play_a_noob_race"
-        )
+    )
     print(p)
     # plot.save(filename='test.png', dpi=1000)
