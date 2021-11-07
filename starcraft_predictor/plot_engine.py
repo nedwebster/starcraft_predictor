@@ -137,12 +137,7 @@ class PlotEngine:
 
     }
 
-    # def theme_sc2():
-    #     """
-    #     Custom plotnine.ggplot theme for starcraft 2 flavored plots.
-    #     """
-
-    def add_threshold_crossings(self, df: pd.DataFrame) -> pd.DataFrame:
+    def __add_threshold_crossings(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Adds points in the data where the line crosses the 0.5 threshold.
         """
@@ -189,7 +184,7 @@ class PlotEngine:
 
         return df
 
-    def stack_df(
+    def __stack_df(
         self, df: pd.DataFrame,
         p1_handle: str = "Player 1", p2_handle: str = "Player 2"
     ) -> pd.DataFrame:
@@ -237,10 +232,10 @@ class PlotEngine:
         """
 
         # add any points where the win_probs crosses the 0.5 threshold
-        df = self.add_threshold_crossings(df=df)
+        df = self.__add_threshold_crossings(df=df)
 
         # stack data ready for plot
-        df = self.stack_df(df=df, p1_handle=p1_handle, p2_handle=p2_handle)
+        df = self.__stack_df(df=df, p1_handle=p1_handle, p2_handle=p2_handle)
 
         # build ggplot object
         p = (
