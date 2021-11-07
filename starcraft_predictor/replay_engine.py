@@ -87,12 +87,6 @@ class ReplayEngine:
         return data
 
     @classmethod
-    def load_batch(cls, paths: list):
-        """Load multiple replays from a list of paths"""
-        # TODO: add functionality
-        pass
-
-    @classmethod
     def build_batch(cls, replays: list):
         """Convert a list of replays into a single batch dataframe"""
         # TODO: add functionality
