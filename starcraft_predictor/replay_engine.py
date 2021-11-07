@@ -54,7 +54,6 @@ class ReplayEngine:
     ) -> pd.DataFrame:
         """Build a dataframe of structured data from a replay object"""
 
-        # TODO: update to use custom replay class when implemented
         if not isinstance(replay, Replay):
             raise TypeError(
                 "replay must be a starcraft_predictor.replay.Replay"
@@ -78,7 +77,6 @@ class ReplayEngine:
             data.loc[i, :] = event_data
 
         # update table with replay metadata
-        # TODO: update replay references when replay class is implemented
         data["filehash"] = replay.filehash
         data["winner"] = replay.winner
         data["player_1_race"] = replay.player_1_race
