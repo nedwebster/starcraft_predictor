@@ -14,6 +14,7 @@ seaborn = "*"
 ipykernel = "*"
 jupyter = "*"
 scikit-learn = "*"
+plotnine = "*"
 
 [dev-packages]
 flake8 = "*"
