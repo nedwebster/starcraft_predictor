@@ -15,6 +15,7 @@ ipykernel = "*"
 jupyter = "*"
 scikit-learn = "*"
 plotnine = "*"
+statsmodels = "*"
 
 [dev-packages]
 flake8 = "*"

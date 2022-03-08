@@ -91,8 +91,20 @@ class ReplayEngine:
         # initialise empty list to append replay dataframes to
         dataframes = []
 
-        for replay in replays:
-            dataframes.append(cls.build_dataframe(replay))
+        # loop through replays and append to list
+        for i, replay in enumerate(replays):
+
+            print(
+                f"Building batch: {i+1}/{len(replays)}",
+                end="\r",
+            )
+
+            try:
+                df = cls.build_dataframe(replay)
+                dataframes.append(df)
+
+            except IndexError:
+                print(f"\n{i}: failed" + " "*10)
 
         return pd.concat(dataframes)
 
