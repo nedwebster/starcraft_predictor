@@ -31,7 +31,6 @@ class StarcraftModel:
 
         return cls(xgb_model=xgb_model)
 
-
     def predict(self, data: pd.DataFrame):
         """Generate probability predictons from a dataframe"""
 
