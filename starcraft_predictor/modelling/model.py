@@ -5,12 +5,14 @@ from starcraft_predictor.modelling import model_params
 
 
 class StarcraftModel:
+    """Model to predict win probability"""
 
     def __init__(self, xgb_model: xgb.core.Booster):
         self.model = xgb_model
 
     @classmethod
     def train_model(cls, data: pd.DataFrame):
+        """Train a model from a training dataset"""
 
         # HOTFIX: Should be done as a transformer in pipeline
         for col in model_params.FEATURES:
@@ -31,6 +33,7 @@ class StarcraftModel:
 
 
     def predict(self, data: pd.DataFrame):
+        """Generate probability predictons from a dataframe"""
 
         for col in model_params.FEATURES:
             data[col] = data[col].astype("float")
