@@ -9,6 +9,7 @@ from .replay_engine import ReplayEngine
 from .replay import Replay
 from .modelling import StarcraftModelEngine
 from .modelling import sc2_preprocessing_pipeline
+from .scp_api import ScpApi as api
 
 # load pre-trained xgboost model
 trained_model = joblib.load(
