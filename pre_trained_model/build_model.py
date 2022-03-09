@@ -113,7 +113,7 @@ def build_final_model(
         y=train_data[model_params.RESPONSE],
         eval_set=[(test_data[features], test_data[model_params.RESPONSE])],
         eval_metric="auc",
-        early_stopping_rounds=10,
+        early_stopping_rounds=20,
     )
 
     print("Final Model Built\n")
@@ -128,8 +128,8 @@ def print_metrics(
 ):
     """Prints the AUC for train and test samples"""
 
-    train_preds = model.predict_proba(train_data[features])[:, 0]
-    test_preds = model.predict_proba(test_data[features])[:, 0]
+    train_preds = model.predict_proba(train_data[features])[:, 1]
+    test_preds = model.predict_proba(test_data[features])[:, 1]
 
     train_auc = roc_auc_score(
         y_true=train_data[model_params.RESPONSE],
@@ -160,7 +160,7 @@ def main():
     param_grid = {
         "n_estimators": [100, 300, 500, 1000],
         "learning_rate": [0.05, 0.1, 0.2, 0.3],
-        "max_depth": [2, 4, 8, 16],
+        "max_depth": [2, 3, 4],
         "subsample": [0.5, 0.75, 0.9],
         "colsample_bytree": [0.5, 0.75, 0.9],
     }

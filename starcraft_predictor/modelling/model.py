@@ -38,6 +38,6 @@ class StarcraftModelEngine:
 
         predictions = self.model.predict_proba(
             data[model_params.FEATURES]
-        )[:, 0]
+        )[:, 1]
 
         return predictions
