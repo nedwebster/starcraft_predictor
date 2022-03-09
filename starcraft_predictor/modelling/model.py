@@ -4,10 +4,10 @@ import xgboost as xgb
 from starcraft_predictor.modelling import model_params
 
 
-class StarcraftModel:
+class StarcraftModelEngine:
     """Model to predict win probability"""
 
-    def __init__(self, xgb_model: xgb.core.Booster):
+    def __init__(self, xgb_model: xgb.XGBClassifier):
         self.model = xgb_model
 
     @classmethod
@@ -18,15 +18,14 @@ class StarcraftModel:
         for col in model_params.FEATURES:
             data[col] = data[col].astype("float")
 
-        dmatrix = xgb.DMatrix(
-            data=data[model_params.FEATURES],
-            label=data[model_params.RESPONSE],
+        xgb_model = xgb.XGBClassifier(
+            **model_params.PARAMS,
         )
 
-        xgb_model = xgb.train(
-            params=model_params.PARAMS,
-            dtrain=dmatrix,
-            num_boost_round=model_params.NUM_BOOST_ROUND,
+        xgb_model.fit(
+            X=data[model_params.FEATURES],
+            y=data[model_params.RESPONSE],
+            eval_metric="auc",
         )
 
         return cls(xgb_model=xgb_model)
@@ -37,10 +36,6 @@ class StarcraftModel:
         for col in model_params.FEATURES:
             data[col] = data[col].astype("float")
 
-        dmatrix = xgb.DMatrix(
-            data=data[model_params.FEATURES],
-        )
-
-        predictions = self.model.predict(dmatrix)
+        predictions = self.model.predict(data[model_params.FEATURES])
 
         return predictions

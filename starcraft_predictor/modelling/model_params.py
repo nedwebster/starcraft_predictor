@@ -1,10 +1,38 @@
-PARAMS = {
-    "eta": 0.3,
-    "max_depth": 3,
-    "objective": "binary:logistic"
-}
+import numpy as np
 
-NUM_BOOST_ROUND = 300
+
+PARAMS = {
+    'objective': 'binary:logistic',
+    'use_label_encoder': False,
+    'base_score': 0.5,
+    'booster': 'gbtree',
+    'colsample_bylevel': 1,
+    'colsample_bynode': 1,
+    'colsample_bytree': 0.5,
+    'enable_categorical': False,
+    'gamma': 0,
+    'gpu_id': -1,
+    'importance_type': None,
+    'interaction_constraints': '',
+    'learning_rate': 0.05,
+    'max_delta_step': 0,
+    'max_depth': 16,
+    'min_child_weight': 1,
+    'missing': np.nan,
+    'monotone_constraints': '()',
+    'n_estimators': 500,
+    'n_jobs': 8,
+    'num_parallel_tree': 1,
+    'predictor': 'auto',
+    'random_state': 2709,
+    'reg_alpha': 0,
+    'reg_lambda': 1,
+    'scale_pos_weight': 1,
+    'subsample': 0.5,
+    'tree_method': 'exact',
+    'validate_parameters': 1,
+    'verbosity': None
+}
 
 FEATURES = [
     "seconds",
