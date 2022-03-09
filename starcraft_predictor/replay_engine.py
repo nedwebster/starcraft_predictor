@@ -104,7 +104,7 @@ class ReplayEngine:
                 dataframes.append(df)
 
             except IndexError:
-                print(f"\n{i}: failed" + " "*10)
+                print(f"\n{i+1}: failed" + " "*10)
 
         return pd.concat(dataframes)
 

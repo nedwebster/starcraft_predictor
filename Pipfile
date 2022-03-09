@@ -16,6 +16,7 @@ jupyter = "*"
 scikit-learn = "*"
 plotnine = "*"
 statsmodels = "*"
+pyzmq = "==22.0.0"
 
 [dev-packages]
 flake8 = "*"
