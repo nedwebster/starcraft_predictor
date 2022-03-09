@@ -128,8 +128,8 @@ def print_metrics(
 ):
     """Prints the AUC for train and test samples"""
 
-    train_preds = model.predict(train_data[features])
-    test_preds = model.predict(test_data[features])
+    train_preds = model.predict_proba(train_data[features])[:, 0]
+    test_preds = model.predict_proba(test_data[features])[:, 0]
 
     train_auc = roc_auc_score(
         y_true=train_data[model_params.RESPONSE],
