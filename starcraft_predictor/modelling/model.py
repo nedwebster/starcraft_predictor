@@ -36,6 +36,8 @@ class StarcraftModelEngine:
         for col in model_params.FEATURES:
             data[col] = data[col].astype("float")
 
-        predictions = self.model.predict(data[model_params.FEATURES])
+        predictions = self.model.predict_proba(
+            data[model_params.FEATURES]
+        )[:, 0]
 
         return predictions
