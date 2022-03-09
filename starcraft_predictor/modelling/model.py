@@ -41,3 +41,6 @@ class StarcraftModelEngine:
         )[:, 1]
 
         return predictions
+
+    def __repr__(self):
+        return f"StarcraftModel(xgb_model={self.model})"
