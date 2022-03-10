@@ -21,10 +21,13 @@ def load_replays(path: str) -> list:
     replays = []
     for i, path in enumerate(replay_paths):
         print(f"{i+1}/{len(replay_paths)}", end="\r")
+
         try:
             replays.append(scp.Replay.from_path(path=path))
-        except AttributeError:
-            print(f"{i+1}: failed")
+
+        # TODO: Investigate what is causing these errors
+        except (IndexError, AttributeError) as e:  # noqa: F841
+            print(f"{i+1} failed: {e}")
 
     print("\nReplays loaded")
     return replays
@@ -67,7 +70,7 @@ def build_sample_column(data: pd.DataFrame):
 def main():
 
     local_path = (
-        "C:/Users/Ned/OneDrive/Documents/Python Projects/data/sc2replays"
+        "C:/Users/Edward/Documents/python_project/sc2_data/replays"
     )
 
     replays = load_replays(path=local_path)
@@ -75,10 +78,7 @@ def main():
     transformed_dataset = build_sample_column(transformed_dataset)
 
     transformed_dataset.to_csv(
-        (
-            "C:/Users/Ned/OneDrive/Documents"
-            "/Python Projects/data/transformed_data.csv"
-        ),
+        "C:/Users/Edward/Documents/python_project/sc2_data/transformed_data.csv",
         index=False,
     )
 

@@ -17,6 +17,7 @@ scikit-learn = "*"
 plotnine = "*"
 statsmodels = "*"
 pyzmq = "==22.0.0"
+boruta = "*"
 
 [dev-packages]
 flake8 = "*"
