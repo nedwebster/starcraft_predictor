@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import xgboost as xgb
 
 from starcraft_predictor.modelling import model_params
@@ -30,7 +31,7 @@ class StarcraftModelEngine:
 
         return cls(xgb_model=xgb_model)
 
-    def predict(self, data: pd.DataFrame):
+    def predict(self, data: pd.DataFrame, smoothed: bool = True):
         """Generate probability predictons from a dataframe"""
 
         for col in model_params.FEATURES:
@@ -39,6 +40,11 @@ class StarcraftModelEngine:
         predictions = self.model.predict_proba(
             data[model_params.FEATURES]
         )[:, 1]
+
+        if smoothed:
+            predictions = np.array(
+                pd.Series(predictions).ewm(alpha=0.5).mean()
+            )
 
         return predictions
 
