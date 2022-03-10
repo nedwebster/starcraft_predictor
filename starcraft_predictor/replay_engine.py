@@ -103,8 +103,9 @@ class ReplayEngine:
                 df = cls.build_dataframe(replay)
                 dataframes.append(df)
 
-            except IndexError:
-                print(f"\n{i+1}: failed" + " "*10)
+            # TODO: Investigate what is causing these errors
+            except (ValueError, IndexError) as e:
+                print(f"\n{i+1} failed: {e}")
 
         return pd.concat(dataframes)
 
