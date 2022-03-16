@@ -4,6 +4,8 @@ import xgboost as xgb
 
 from starcraft_predictor.modelling import model_params
 
+pd.options.mode.chained_assignment = None
+
 
 class StarcraftModelEngine:
     """Model to predict win probability"""
@@ -32,21 +34,30 @@ class StarcraftModelEngine:
         return cls(xgb_model=xgb_model)
 
     def predict(self, data: pd.DataFrame, smoothed: bool = True):
-        """Generate probability predictons from a dataframe"""
+        """Generate probability predictons from a dataframe. Predictions
+        are generated for each filehash seperately so that they can be
+        smoothed if required."""
 
         for col in model_params.FEATURES:
             data[col] = data[col].astype("float")
 
-        predictions = self.model.predict_proba(
-            data[model_params.FEATURES]
-        )[:, 1]
+        prediction_list = []
 
-        if smoothed:
-            predictions = np.array(
-                pd.Series(predictions).ewm(alpha=0.5).mean()
-            )
+        for filehash in data["filehash"].unique():
 
-        return predictions
+            data_subset = data[
+                data["filehash"] == filehash
+            ][model_params.FEATURES]
+            subset_preds = self.model.predict_proba(data_subset)[:, 1]
+
+            if smoothed:
+                subset_preds = pd.Series(
+                    subset_preds
+                ).ewm(alpha=0.5).mean().values
+
+            prediction_list.append(subset_preds)
+
+        return np.concatenate(prediction_list)
 
     def __repr__(self):
         return f"StarcraftModel(xgb_model={self.model})"
