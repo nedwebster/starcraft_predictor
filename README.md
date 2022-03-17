@@ -1,2 +1,2 @@
 # starcraft_predictor
-Windowed time series model to predict win probability in a SC2 game
+`starcraft_predictor` contains a pre-trained XGBoost model that can be used to generate 
