@@ -148,7 +148,8 @@ def print_metrics(
 def main():
 
     local_path = (
-        "C:/Users/Edward/Documents/python_project/sc2_data/transformed_data.csv"
+        "C:/Users/Edward/Documents/python_project/sc2_data/"
+        "transformed_data.csv"
     )
 
     data = load_data(path=local_path)

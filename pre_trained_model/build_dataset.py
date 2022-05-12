@@ -78,7 +78,8 @@ def main():
     transformed_dataset = build_sample_column(transformed_dataset)
 
     transformed_dataset.to_csv(
-        "C:/Users/Edward/Documents/python_project/sc2_data/transformed_data.csv",
+        "C:/Users/Edward/Documents/python_project/sc2_data/"
+        "transformed_data.csv",
         index=False,
     )
 
