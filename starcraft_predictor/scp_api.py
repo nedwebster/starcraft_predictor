@@ -1,24 +1,40 @@
 import joblib
+import os
+
 import pandas as pd
 import numpy as np
 
 from starcraft_predictor import (
     Replay,
     ReplayEngine,
-    StarcraftModelEngine,
     sc2_preprocessing_pipeline,
     PlotEngine,
+    StarcraftModelEngine
 )
+
+
+def load_pretrained_model():
+    PACKAGE_INSTALLATION_PATH = os.path.dirname(
+        os.path.abspath(__file__)
+    )
+
+    trained_model = joblib.load(
+        PACKAGE_INSTALLATION_PATH + "/modelling/trained_model.pkl"
+    )
+    starcraft_model = StarcraftModelEngine(
+        xgb_model=trained_model,
+    )
+
+    return starcraft_model
+
+
+PRE_TRAINED_MODEL = load_pretrained_model()
 
 
 class ScpApi:
     """Main user API for evaluating SC2 replays"""
 
-    model = StarcraftModelEngine(
-        xgb_model=joblib.load(
-            "../starcraft_predictor/modelling/trained_model.pkl"
-        ),
-    )
+    model = PRE_TRAINED_MODEL
 
     plot_engine = PlotEngine()
 
