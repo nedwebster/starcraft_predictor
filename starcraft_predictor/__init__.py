@@ -3,6 +3,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 import joblib
+import os
 
 from .plot_engine import PlotEngine
 from .replay_engine import ReplayEngine
@@ -10,13 +11,6 @@ from .replay import Replay
 from .modelling import StarcraftModelEngine
 from .modelling import sc2_preprocessing_pipeline
 from .scp_api import ScpApi as api
+from .scp_api import PRE_TRAINED_MODEL as starcraft_model
 
-# load pre-trained xgboost model
-trained_model = joblib.load(
-    "../starcraft_predictor/modelling/trained_model.pkl"
-)
-starcraft_model = StarcraftModelEngine(
-    xgb_model=trained_model,
-)
-
-del trained_model, warnings, joblib
+del warnings, joblib
