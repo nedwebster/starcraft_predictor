@@ -21,6 +21,7 @@ matplotlib = "==3.5.3"
 
 [dev-packages]
 flake8 = "*"
+coverage = "*"
 
 [requires]
 python_version = "3.8"
