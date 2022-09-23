@@ -20,6 +20,8 @@ jobs:
         pip install pipenv==2022.9.21
         pipenv install --dev
         pipenv install .
-        coverage run -m pytest tests/.
+        pipenv run pytest --cov-report xml --cov=starcraft_predictor tests/.  
     - name: Upload Coverage to Codecov
       uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage.xml
