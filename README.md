@@ -17,7 +17,7 @@ pip install .
 
 ## Usage
 
-To analyse a replay, use the `api` module from `starcraft_predictor``
+To analyse a replay, use the `api` module from `starcraft_predictor`
 
 ```
 from starcraft_predictor import api
@@ -26,3 +26,8 @@ api.evaluate_replay("path/to/replay.SC2Replay")
 ```
 
 ![](example_data/sc2_plot.png)
+
+
+## Further Documentation
+
+For documentation on usage for any other aspects of the package, there are example notebooks in the `example_noteboks` folder.
