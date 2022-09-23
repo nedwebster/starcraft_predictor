@@ -24,3 +24,5 @@ from starcraft_predictor import api
 
 api.evaluate_replay("path/to/replay.SC2Replay")
 ```
+
+![](example_data/sc2_plot.png)
