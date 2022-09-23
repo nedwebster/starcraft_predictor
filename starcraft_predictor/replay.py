@@ -54,6 +54,12 @@ class Replay:
         if not isinstance(replay, sc2reader.resources.Replay):
             raise TypeError("replay_file must be sc2reader.resources.Replay")
 
+        if len(replay.players > 2){
+            raise ValueError(
+                "replay_file must be a 1v1 game; team games are not supported"
+            )
+        }
+
         return cls(
             filehash=replay.filehash,
             winner=replay.winner.number - 1,  # convert winner to [0, 1]
