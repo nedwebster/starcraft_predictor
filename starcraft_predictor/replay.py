@@ -96,7 +96,7 @@ class Replay:
 
             for i, event in enumerate(player_events):
 
-                if i == len(player_events):
+                if i + 1 == len(player_events):
                     return player_events
                 else:
                     if event.player == player_events[i + 1].player:
