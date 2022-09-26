@@ -23,6 +23,8 @@ matplotlib = "==3.5.3"
 flake8 = "*"
 coverage = "*"
 pytest-cov = "*"
+pytest = "*"
+pytest-mock = "*"
 
 [requires]
 python_version = "3.8"
