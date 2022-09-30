@@ -25,6 +25,7 @@ coverage = "*"
 pytest-cov = "*"
 pytest = "*"
 pytest-mock = "*"
+pytest-mpl = "*"
 
 [requires]
 python_version = "3.8"
