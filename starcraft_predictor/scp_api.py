@@ -81,7 +81,7 @@ class ScpApi:
 
         plot = cls.plot_engine.win_probability_plot(**plot_params)
 
-        print(plot)
+        return plot
 
     @classmethod
     def evaluate_replay(cls, path: str):
