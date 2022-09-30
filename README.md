@@ -17,7 +17,9 @@ pip install .
 
 ## Usage
 
-To analyse a replay, use the `api` module from `starcraft_predictor`
+To analyse a replay, use the `api` module from `starcraft_predictor`.
+
+Run the following code in a notebook:
 
 ```
 from starcraft_predictor import api
@@ -55,9 +57,19 @@ For documentation on usage for any other aspects of the package, there are examp
     └── scp_api.py                       <-- main user api for the package
 ```
 
+## Testing
+The package uses `pytest` as it's testing framework. It also uses the `pytest-mpl` addon for testing plots (documentation can be found here: https://github.com/matplotlib/pytest-mpl).
+
+Baseline plots have been created for `pytest-mpl` with the command:
+```pytest --mpl-generate-path=tests/baseline```
+This command does not need to be re-run by the user, unless changes are made that alter the output of the plots.
+
+To run the tests locally, use the following command:
+
+```pytest --mpl tests/.```
+
 ## TODO
 - Additional feature to model
 - Explore alternative modelling techniques
-- SC2 themed plotting
 - Key moments overlay on plots
 - Conformal predictors for assessing model confidence

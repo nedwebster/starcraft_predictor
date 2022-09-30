@@ -1,137 +1,24 @@
+import os
+
 import pandas as pd
 import numpy as np
-from numpy.random import rand
-from plotnine import (
-    ggplot,
-    aes,
-    geom_line,
-    theme,
-    xlab,
-    ylab,
-    geom_hline,
-    scale_color_manual,
-    guides,
-    ggtitle,
-    scale_x_continuous,
-)
-from plotnine.themes import (
-    element_line, element_text, element_blank, element_rect,)
-from plotnine.options import get_option
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as font_manager
+import matplotlib.patches as mpatches
+import seaborn as sns
 
 
-class ThemeStarcraft(theme):
-    """
-    Custom theme for Starcraft 2 flavored plots.
-    """
+def get_font_prop():
 
-    # code for ThemeStarcraft modified from:
-    # https://plotnine.readthedocs.io/en/stable/_modules/plotnine/themes/theme_gray.html
+    PACKAGE_INSTALLATION_PATH = os.path.dirname(
+        os.path.abspath(__file__)
+    )
 
-    def __init__(self, base_size=11, base_family=None):
-        base_family = base_family or get_option('base_family')
-        half_line = base_size/2
-        background_color = "#d1d7de"
+    font_prop = font_manager.FontProperties(
+        fname=PACKAGE_INSTALLATION_PATH + "/fonts/starcraft_font.ttf"
+    )
 
-        theme.__init__(
-            self,
-            line=element_line(color='black', size=1,
-                              linetype='solid', lineend='butt'),
-            rect=element_rect(fill=background_color, color='black',
-                              size=1, linetype='solid'),
-            text=element_text(family=base_family, style='normal',
-                              color='black', size=base_size,
-                              linespacing=0.9, ha='center',
-                              va='center', rotation=0, margin={}),
-            aspect_ratio=get_option('aspect_ratio'),
-
-            axis_line=element_line(),
-            axis_line_x=element_blank(),
-            axis_line_y=element_blank(),
-            axis_text=element_text(size=base_size*.8,
-                                   color='#4D4D4D'),
-            axis_text_x=element_text(
-                va='top', margin={'t': half_line*0.8/2}),
-            axis_text_y=element_text(
-                ha='right', margin={'r': half_line*0.8/2}),
-            axis_ticks=element_line(color='#333333'),
-            axis_ticks_length=0,
-            axis_ticks_length_major=half_line/2,
-            axis_ticks_length_minor=half_line/4,
-            axis_ticks_minor=element_blank(),
-            axis_ticks_direction='out',
-            axis_ticks_pad=2,
-            axis_title_x=element_text(
-                va='top', margin={'t': half_line*0.8}),
-            axis_title_y=element_text(
-                angle=90, va='bottom', margin={'r': half_line*0.8}),
-
-            dpi=get_option('dpi'),
-            figure_size=get_option('figure_size'),
-
-            # legend, None values are for parameters where the
-            # drawing routines can make better decisions than
-            # can be pre-determined in the theme.
-            legend_background=element_rect(color='None'),
-            legend_entry_spacing_x=5,
-            legend_entry_spacing_y=2,
-            legend_key=element_rect(fill=background_color,
-                                    colour='None'),
-            legend_key_size=base_size*0.8*1.8,
-            legend_key_height=None,
-            legend_key_width=None,
-            legend_margin=0,     # points
-            legend_spacing=10,   # points
-            legend_text=element_text(
-                size=base_size*0.8, ha='left',
-                margin={'t': 3, 'b': 3, 'l': 3, 'r': 3,
-                        'units': 'pt'}),
-            legend_text_legend=element_text(va='baseline'),
-            legend_text_colorbar=element_text(va='center'),
-            legend_title=element_text(ha='left',
-                                      margin={'t': half_line*0.8,
-                                              'b': half_line*0.8,
-                                              'l': half_line*0.8,
-                                              'r': half_line*0.8,
-                                              'units': 'pt'}),
-            legend_title_align=None,
-            legend_position='right',
-            legend_box=None,
-            legend_box_margin=10,    # points
-            legend_box_just=None,
-            legend_box_spacing=0.1,  # In inches
-            legend_direction=None,
-
-            panel_background=element_rect(fill=background_color),
-            panel_border=element_blank(),
-            panel_grid_major=element_line(color='white', size=1),
-            panel_grid_minor=element_line(color='white', size=0.5),
-            panel_spacing=0.07,
-            panel_spacing_x=0.07,
-            panel_spacing_y=0.07,
-            panel_ontop=True,
-
-            strip_background=element_rect(fill=background_color, color='None'),
-            strip_margin=0,
-            strip_margin_x=None,
-            strip_margin_y=None,
-            strip_text=element_text(color='#1A1A1A', size=base_size*0.8,
-                                    linespacing=1.0),
-            strip_text_x=element_text(
-                margin={'t': half_line/2, 'b': half_line/2}),
-            strip_text_y=element_text(
-                margin={'l': half_line/2, 'r': half_line/2},
-                rotation=-90),
-
-            plot_background=element_rect(color='white'),
-            plot_title=element_text(size=base_size*1.2,
-                                    margin={'b': half_line*1.2,
-                                            'units': 'pt'},
-                                    ha="center",
-                                    weight="heavy"),
-            plot_margin=None,
-
-            complete=True,
-        )
+    return font_prop
 
 
 class PlotEngine:
@@ -148,80 +35,115 @@ class PlotEngine:
         "z": "#88409C",
     }
 
-    def __add_threshold_crossings(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Adds points in the data where the line crosses the 0.5 threshold.
-        """
-        # first step is to find rows (i, i+1) where the win_prob crosses 0.5
-        # create a shifted win_prob column such that each row i has the i+1th
-        # win_prob in the shifted_win_prob column
-        df["seconds_shifted"] = df["seconds"].shift(-1)
-        df["win_prob_shifted"] = df["win_prob"].shift(-1)
+    # set global setting for background
+    plt.rcParams['font.family'] = 'monospace'
+    FONT_PROP = get_font_prop()
 
-        # now determine whether the values cross the 0.5 threshold
-        threshold_crossed_rows = np.where(
-            ((df["win_prob"] < 0.5) & (df["win_prob_shifted"] > 0.5)) |
-            ((df["win_prob"] > 0.5) & (df["win_prob_shifted"] < 0.5))
+    @staticmethod
+    def _find_crossing_pairs(y, threshold):
+        """
+        Function to find the pair of y values that cross a given threshold.
+        """
+
+        pairs = []
+
+        y_temp = list(np.subtract(y, threshold))
+
+        for i in range(len(y_temp) - 1):
+            if (np.sign(y_temp[i]) == 0) or (np.sign(y_temp[i+1]) == 0):
+                pass
+            elif np.sign(y_temp[i]) != np.sign(y_temp[i + 1]):
+                pairs.append((i, i+1))
+
+        return pairs
+
+    @staticmethod
+    def _insert_new_values(x, y, crossing_index, threshold):
+        """
+        Function to insert a new value inbetween the crossing pair,
+        that sits on the threshold line.
+
+        """
+
+        rate_of_change = (
+            (y[crossing_index[1]] - y[crossing_index[0]])
+            / (x[crossing_index[1]] - x[crossing_index[0]])
         )
 
-        for row in threshold_crossed_rows[0]:
+        x_movement = (threshold - y[crossing_index[0]]) / rate_of_change
 
-            # find the % from point i to i+1
-            xp = [df.iloc[row]["win_prob"], df.iloc[row]["win_prob_shifted"]]
-            fp = [df.iloc[row]["seconds"], df.iloc[row]["seconds_shifted"]]
+        new_x = x[crossing_index[0]] + x_movement
 
-            # np.interp requires monotonic increasing xp array
-            if xp[0] > xp[-1]:
-                xp = xp[::-1]
+        x.insert(crossing_index[1], new_x)
+        y.insert(crossing_index[1], threshold)
 
-            # determine the crossing point in seconds
-            crossing_point = np.interp(0.5, xp, fp)
+        return x, y
 
-            # build new row for the interpolated point
-            new_row = pd.DataFrame({
-                "seconds": [crossing_point],
-                "win_prob": [0.5],
-                "seconds_shifted": [df.iloc[row]["seconds_shifted"]],
-                "win_prob_shifted": [df.iloc[row]["win_prob_shifted"]]
-            })
+    def _add_threshold_points(self, x, y, threshold):
+        """
+        Wrapper to apply the insert_new_values function to
+        all crosisng pairs in x and y
 
-            # update original row
-            df.at[row, "win_prob_shifted"] = 0.5
-            df.at[row, "seconds_shifted"] = crossing_point
+        """
 
-            # add new row to df
-            df = df.append(new_row)
+        crossing_pairs = self._find_crossing_pairs(y, threshold)
 
-        return df
+        for i, pair in enumerate(crossing_pairs):
 
-    def __stack_df(
-        self,
-        df: pd.DataFrame,
-        p1_handle: str = "Player 1",
-        p2_handle: str = "Player 2"
-    ) -> pd.DataFrame:
+            pair = tuple(np.add(pair, i))
+            x, y, = self._insert_new_values(x, y, pair, threshold)
 
-        # create a binary "predicted_winner" column
-        conditions = [
-            (df["win_prob"] < 0.5) & (df["win_prob_shifted"] <= 0.5),
-            (df["win_prob"] > 0.5) & (df["win_prob_shifted"] >= 0.5),
-            (df["win_prob"] == 0.5) & (df["win_prob_shifted"] < 0.5),
-            (df["win_prob"] == 0.5) & (df["win_prob_shifted"] > 0.5),
-        ]
-        values = [0, 1, 0, 1]
-        df["predicted_winner"] = np.select(conditions, values)
+        return x, y
 
-        # create a copy of the data and reverse the predicted winner column
-        df_p2 = df.copy()
-        df_p2["predicted_winner"] = abs(df["predicted_winner"] - 1)
+    def _threshold_plot(self, ax, x, y, threshv, color, overcolor):
+        """
+        Helper function to plot points above a threshold in a different color.
 
-        # create player columns
-        # TODO: Update player to player IDs
-        df["Player"] = p1_handle
-        df_p2["Player"] = p2_handle
+        This is a pretty hacky way to assign the colours with if/elif
+        statements. Should find a way to make this less verbose.
 
-        # return appended df
-        return df.append(df_p2)
+        Parameters
+        ----------
+        ax : Axes
+            Axes to plot to
+        x, y : array
+            The x and y values
+
+        threshv : float
+            Plot using overcolor above this value
+
+        color : color
+            The color to use for the lower values
+
+        overcolor: color
+            The color to use for values over threshv
+
+        """
+
+        # splits x and y into individual line segments
+        points = np.array([x, y]).T.reshape(-1, 1, 2)
+        segments = np.concatenate([points[:-1], points[1:]], axis=1)
+
+        # for each line segment, assess what colour it should be
+        for i, segment in enumerate(segments):
+            if segment[:, 1][0] < 0.5:
+                plot_color = color
+            elif segment[:, 1][0] > 0.5:
+                plot_color = overcolor
+            elif segment[:, 1][1] < 0.5:
+                plot_color = color
+            else:
+                plot_color = overcolor
+
+            # plot that individual line segment
+            ax.plot(
+                segment[:, 0],
+                segment[:, 1],
+                color=plot_color,
+                linewidth=3,
+            )
+
+        return ax
 
     def win_probability_plot(
         self,
@@ -230,80 +152,86 @@ class PlotEngine:
         p2_race: str,
         match_id: str = "TESTID",
         p1_handle: str = "Player 1",
-        p2_handle: str = "Player 2"
-    ) -> ggplot:
+        p2_handle: str = "Player 2",
+    ):
         """
-        Plots a win probability line graph.
+        Win probability plot in starcraft theme
 
-        mappings:
-            x axis: Game time in 10 second intervals.
-            y axis: Win probability for player 1.
-            color: Player.
-
-        geoms:
-            line: A line showing the win probability.
-
-        Returns:
-            A plotnine ggplot object.
         """
 
-        # add any points where the win_probs crosses the 0.5 threshold
-        df = self.__add_threshold_crossings(df=df)
+        # create fig and axis
+        fig, ax = plt.subplots(figsize=(20, 10), facecolor="#00182c")
 
-        # stack data ready for plot
-        df = self.__stack_df(df=df, p1_handle=p1_handle, p2_handle=p2_handle)
+        # set facecolor
+        ax.set_facecolor("#010713")
 
-        # build ggplot object
-        p = (
-            ggplot(
-                df,
-                aes(
-                    x="seconds",
-                    y="win_prob",
-                    color="Player",
-                    alpha="predicted_winner",
-                ),
-            )
-            + geom_hline(yintercept=0.5, linetype="dashed", color="grey")
-            + geom_line()
-            + xlab("Game Time (seconds)")
-            + ylab("Win Probability for Player 1 (%)")
-            + ggtitle(f"Win Probability for Match ID: {match_id}")
-            + ThemeStarcraft()
-            + scale_color_manual(values={
-                p1_handle: self.RACE_COLORS[p1_race],
-                p2_handle: self.RACE_COLORS[p2_race]
-            })
-            + scale_x_continuous(breaks=np.arange(start=0, stop=1e6, step=60))
-            + guides(alpha=False)
+        x, y = self._add_threshold_points(
+            list(df["seconds"].values),
+            list(df["win_prob"].values),
+            threshold=0.5,
         )
 
-        return p
+        # plot the win probability line
+        self._threshold_plot(
+            ax,
+            x,
+            y,
+            .5,
+            self.RACE_COLORS[p1_race],
+            self.RACE_COLORS[p2_race],
+        )
 
+        # plot 50% line
+        sns.lineplot(
+            x=df["seconds"],
+            y=0.5,
+            color="white",
+            ls="dashed",
+            lw=0.5,
+        )
 
-if __name__ == "__main__":
-    # create data
-    test_data = pd.DataFrame(
-        data={
-            "seconds": np.arange(start=0, stop=600, step=10),
-            "win_prob": np.clip(
-                np.arange(start=0.3, stop=0.6, step=0.005) + (rand(60)/20),
-                a_min=0,
-                a_max=1
-            )
-        }
-    )
-    pe = PlotEngine()
-    # test_data2 = pe.add_threshold_crossings(df=test_data)
-    # test_data2 = pe.stack_df(df=test_data2)
-    # print(test_data2)
-    p = pe.win_probability_plot(
-        df=test_data,
-        p1_race="t",
-        p2_race="z",
-        match_id="111111",
-        p1_handle="i_play_a_skill_race",
-        p2_handle="i_play_a_noob_race"
-    )
-    print(p)
-    # plot.save(filename='test.png', dpi=1000)
+        # set ticks and tick parameters (font, color, etc.)
+        ax.set_xticks(df["seconds"].values[::6])
+        ax.set_xticklabels([
+            int(val) for val in df["seconds"].values[::6] / 60
+        ])
+        ax.tick_params(axis='x', colors='#62afd4', labelsize=15)
+        ax.tick_params(axis='y', colors='#62afd4', labelsize=15)
+
+        # set x and y axis limits
+        ax.set_ylim(0, 1)
+        ax.set_xlim(df["seconds"].values[0], df["seconds"].values[-1])
+
+        # add border colour to plot
+        ax.spines['bottom'].set_color('#62afd4')
+        ax.spines['top'].set_color('#62afd4')
+        ax.spines['left'].set_color('#62afd4')
+        ax.spines['right'].set_color('#62afd4')
+
+        # add custom legend with player colours and names
+        patch_1 = mpatches.Patch(
+            color=self.RACE_COLORS[p1_race],
+            label=p1_handle,
+        )
+        patch_2 = mpatches.Patch(
+            color=self.RACE_COLORS[p2_race],
+            label=p2_handle,
+        )
+        plt.legend(
+            handles=[patch_1, patch_2],
+            loc="upper left",
+            facecolor="#00182c",
+            labelcolor="#62afd4",
+        )
+
+        # add title and labels to plots
+        plt.title(
+            "Win Probability Plot\n",
+            color="#62afd4",
+            fontsize=30,
+            fontproperties=self.FONT_PROP,
+        )
+        ax.set_ylabel("Win Probability\n", fontsize=20, color="#62afd4")
+        ax.set_xlabel("\nMinutes", fontsize=20, color="#62afd4")
+
+        return fig
