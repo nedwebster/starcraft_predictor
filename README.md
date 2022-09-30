@@ -1,3 +1,5 @@
+![CICD](https://github.com/nedwebster/starcraft_predictor/actions/workflows/cicd.yml/badge.svg)
+
 # starcraft_predictor
 `starcraft_predictor` contains a pre-trained XGBoost model that can be used to generate win probabilities throughout a Starcraft 2 game. The package uses `.SC2Replay` files to load in game metadata and generate predictions based on the state of the game at every 10 second interval.
 
