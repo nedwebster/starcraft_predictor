@@ -1,3 +1,4 @@
+import pandas as pd
 import pytest
 import shap
 from starcraft_predictor.modelling import starcraft_shap
@@ -112,3 +113,48 @@ class TestStarcraftShap:
         output = sc_shap._get_shap_values()
 
         assert output == "shap_test"
+
+    @pytest.mark.xfail
+    @pytest.mark.parametrize(
+        "index_pair, shap_values, expected_output", [
+            ([0, 1], [[1, 2, 2], [2, 2, 2]], 0),
+            ([0, 1], [[2, 1, 2], [2, 1, 2]], 1),
+        ]
+    )
+    def test_get_max_shap_change(
+        self, index_pair, shap_values, expected_output
+    ):
+
+        index_pair = [0, 1]
+        shap_values = [[1, 3, 3], [2, 3, 3]]
+
+        sc_shap = starcraft_shap.StarcraftShap(
+            processed_replay="test",
+            features=["test_feature"],
+            predictions=[0],
+            model="test",
+        )
+
+        output = sc_shap._get_max_shap_change(shap_values, index_pair)
+
+        assert output == 0
+
+    @pytest.mark.xfail
+    def test_get_feature_difference(self):
+
+        test_data = pd.DataFrame({"a": [1, 4, 8]})
+
+        sc_shap = starcraft_shap.StarcraftShap(
+            processed_replay="test",
+            features=["test_feature"],
+            predictions=[0],
+            model="test",
+        )
+
+        output = sc_shap._get_feature_difference(
+            feature="a",
+            processed_replay=test_data,
+            index_pair=[0, 1],
+        )
+
+        assert output == 3

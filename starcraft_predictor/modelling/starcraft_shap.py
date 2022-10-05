@@ -15,10 +15,10 @@ class StarcraftShap:
     def _get_shap_values(self, model, processed_replay, features):
         pass
 
-    def _get_feature(self, shap_values, index_pair):
+    def _get_get_max_shap_change(self, shap_values, index_pair):
         pass
 
     def _get_feature_difference(
-        self, shap_values, processed_replay, index_pair
+        self, feature, processed_replay, index_pair
     ):
         pass
