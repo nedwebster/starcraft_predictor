@@ -12,7 +12,6 @@ class DummyShapExplainer():
 
 class TestStarcraftShap:
 
-    @pytest.mark.xfail
     def test_init(self, mocker):
 
         mocker.patch.object(
@@ -31,13 +30,13 @@ class TestStarcraftShap:
         assert sc_shap.predictions == [0]
         assert sc_shap.features == ["test_feature"]
         assert sc_shap.moment_index == "test"
+        assert sc_shap.model == "test"
 
-    @pytest.mark.xfail
     @pytest.mark.parametrize(
         "predictions, expected_output", [
-            ([], []),
+            ([0, 1], [[0, 1]]),
             ([-1, 1, 2], [[0, 2]]),
-            ([0, 3, 4, 2, -1, 3], [0, 2, [2, 4], [4, 5]]),
+            ([0, 3, 4, 2, -1, 3], [[0, 2], [2, 4], [4, 5]]),
         ]
     )
     def test_get_min_max_indexes(self, predictions, expected_output):
@@ -53,12 +52,11 @@ class TestStarcraftShap:
 
         assert output == expected_output
 
-    @pytest.mark.xfail
     @pytest.mark.parametrize(
         "index_pair, expected_output", [
             ([0, 1], 10),
             ([1, 3], -8),
-            ([2, 4], 5),
+            ([2, 4], 12),
         ]
     )
     def test_get_differece(self, index_pair, expected_output):
@@ -74,7 +72,6 @@ class TestStarcraftShap:
 
         assert output == expected_output
 
-    @pytest.mark.xfail
     @pytest.mark.parametrize(
         "predictions, expected_output", [
             ([0, 1, 4, 8, 5], [0, 3]),
@@ -94,7 +91,6 @@ class TestStarcraftShap:
 
         assert output == expected_output
 
-    @pytest.mark.xfail
     def test_get_shap_values(self, mocker):
 
         mocker.patch.object(
@@ -105,7 +101,7 @@ class TestStarcraftShap:
 
         sc_shap = starcraft_shap.StarcraftShap(
             processed_replay="test",
-            features=["test_feature"],
+            features=0,
             predictions=[0, 1],
             model="test",
         )
@@ -114,7 +110,6 @@ class TestStarcraftShap:
 
         assert output == "shap_test"
 
-    @pytest.mark.xfail
     @pytest.mark.parametrize(
         "index_pair, shap_values, expected_output", [
             ([0, 1], [[1, 2, 2], [2, 2, 2]], 0),
@@ -139,13 +134,12 @@ class TestStarcraftShap:
 
         assert output == 0
 
-    @pytest.mark.xfail
     def test_get_feature_difference(self):
 
         test_data = pd.DataFrame({"a": [1, 4, 8]})
 
         sc_shap = starcraft_shap.StarcraftShap(
-            processed_replay="test",
+            processed_replay=test_data,
             features=["test_feature"],
             predictions=[0],
             model="test",
@@ -153,8 +147,29 @@ class TestStarcraftShap:
 
         output = sc_shap._get_feature_difference(
             feature="a",
-            processed_replay=test_data,
             index_pair=[0, 1],
         )
 
         assert output == 3
+
+    def test_get_moment(self, mocker):
+
+        mocker.patch.object(starcraft_shap.StarcraftShap, "_get_shap_values")
+        mocker.patch.object(
+            starcraft_shap.StarcraftShap,
+            "_get_max_shap_change",
+            return_value=0,
+        )
+
+        test_data = pd.DataFrame({"a": [1, 4, 8]})
+
+        sc_shap = starcraft_shap.StarcraftShap(
+            processed_replay=test_data,
+            features=["a"],
+            predictions=[0, 1, 2],
+            model="test",
+        )
+
+        output = sc_shap.get_moment()
+
+        assert output == ([0, 2], "a", 7)
