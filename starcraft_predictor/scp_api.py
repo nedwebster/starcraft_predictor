@@ -90,7 +90,7 @@ class ScpApi:
         return plot
 
     @classmethod
-    def evaluate_replay(cls, path: str, moment: bool = True):
+    def evaluate_replay(cls, path: str, moment: bool = False):
         replay = cls._load_replay(path=path)
         data = cls._process_replay(replay=replay)
         predictions = cls._generate_predictions(data=data)
