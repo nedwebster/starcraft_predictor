@@ -1,6 +1,19 @@
 import numpy as np
 import shap
 
+import warnings
+
+
+# ignore SHAP warning about XGBoost arguments
+warnings.filterwarnings(
+    "ignore",
+    message=(
+        "ntree_limit is deprecated, use `iteration_range`"
+        " or model slicing instead."
+    ),
+    category=Warning,
+)
+
 
 class StarcraftShap:
 
