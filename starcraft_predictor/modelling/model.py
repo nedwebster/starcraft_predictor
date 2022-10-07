@@ -10,6 +10,8 @@ pd.options.mode.chained_assignment = None
 class StarcraftModelEngine:
     """Model to predict win probability"""
 
+    params = model_params
+
     def __init__(self, xgb_model: xgb.XGBClassifier):
         self.model = xgb_model
 
@@ -18,16 +20,16 @@ class StarcraftModelEngine:
         """Train a model from a training dataset"""
 
         # HOTFIX: Should be done as a transformer in pipeline
-        for col in model_params.FEATURES:
+        for col in cls.params.FEATURES:
             data[col] = data[col].astype("float")
 
         xgb_model = xgb.XGBClassifier(
-            **model_params.PARAMS,
+            **cls.params.PARAMS,
         )
 
         xgb_model.fit(
-            X=data[model_params.FEATURES],
-            y=data[model_params.RESPONSE],
+            X=data[cls.params.FEATURES],
+            y=data[cls.params.RESPONSE],
             eval_metric="auc",
         )
 
@@ -38,7 +40,7 @@ class StarcraftModelEngine:
         are generated for each filehash seperately so that they can be
         smoothed if required."""
 
-        for col in model_params.FEATURES:
+        for col in self.params.FEATURES:
             data[col] = data[col].astype("float")
 
         prediction_list = []
@@ -47,7 +49,7 @@ class StarcraftModelEngine:
 
             data_subset = data[
                 data["filehash"] == filehash
-            ][model_params.FEATURES]
+            ][self.params.FEATURES]
             subset_preds = self.model.predict_proba(data_subset)[:, 1]
 
             if smoothed:

@@ -55,13 +55,15 @@ class TestScpApi:
 
         output = api._get_plot_params(
             data=input_df,
-            predictions=np.array([0.5])
+            predictions=np.array([0.5]),
+            moment=(1, 2)
         )
 
-        assert list(output.keys()) == ["df", "p1_race", "p2_race"]
+        assert list(output.keys()) == ["df", "p1_race", "p2_race", "moment"]
         pd.testing.assert_frame_equal(
             output["df"],
             pd.DataFrame({"seconds": [10], "win_prob": [0.5]})
         )
         assert output["p1_race"] == "z"
         assert output["p2_race"] == "t"
+        assert output["moment"] == (1, 2)
