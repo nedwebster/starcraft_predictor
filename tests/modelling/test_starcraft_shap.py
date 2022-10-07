@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 import shap
-from starcraft_predictor.modelling import starcraft_shap
+from starcraft_predictor import StarcraftShap
 
 
 class DummyShapExplainer():
@@ -15,12 +15,12 @@ class TestStarcraftShap:
     def test_init(self, mocker):
 
         mocker.patch.object(
-            starcraft_shap.StarcraftShap,
+            StarcraftShap,
             "_get_moment_index",
             return_value="test"
         )
 
-        sc_shap = starcraft_shap.StarcraftShap(
+        sc_shap = StarcraftShap(
             processed_replay="test",
             features=["test_feature"],
             predictions=[0],
@@ -41,7 +41,7 @@ class TestStarcraftShap:
     )
     def test_get_min_max_indexes(self, predictions, expected_output):
 
-        sc_shap = starcraft_shap.StarcraftShap(
+        sc_shap = StarcraftShap(
             processed_replay="test",
             features=["test_feature"],
             predictions=predictions,
@@ -61,7 +61,7 @@ class TestStarcraftShap:
     )
     def test_get_differece(self, index_pair, expected_output):
 
-        sc_shap = starcraft_shap.StarcraftShap(
+        sc_shap = StarcraftShap(
             processed_replay="test",
             features=["test_feature"],
             predictions=[0, 10, 3, 2, 15],
@@ -80,7 +80,7 @@ class TestStarcraftShap:
     )
     def test_get_moment_index(self, predictions, expected_output):
 
-        sc_shap = starcraft_shap.StarcraftShap(
+        sc_shap = StarcraftShap(
             processed_replay="test",
             features=["test_feature"],
             predictions=predictions,
@@ -99,7 +99,7 @@ class TestStarcraftShap:
             return_value=DummyShapExplainer(),
         )
 
-        sc_shap = starcraft_shap.StarcraftShap(
+        sc_shap = StarcraftShap(
             processed_replay="test",
             features=0,
             predictions=[0, 1],
@@ -123,7 +123,7 @@ class TestStarcraftShap:
         index_pair = [0, 1]
         shap_values = [[1, 3, 3], [2, 3, 3]]
 
-        sc_shap = starcraft_shap.StarcraftShap(
+        sc_shap = StarcraftShap(
             processed_replay="test",
             features=["test_feature"],
             predictions=[0],
@@ -138,7 +138,7 @@ class TestStarcraftShap:
 
         test_data = pd.DataFrame({"a": [1, 4, 8]})
 
-        sc_shap = starcraft_shap.StarcraftShap(
+        sc_shap = StarcraftShap(
             processed_replay=test_data,
             features=["test_feature"],
             predictions=[0],
@@ -154,16 +154,16 @@ class TestStarcraftShap:
 
     def test_get_moment(self, mocker):
 
-        mocker.patch.object(starcraft_shap.StarcraftShap, "_get_shap_values")
+        mocker.patch.object(StarcraftShap, "_get_shap_values")
         mocker.patch.object(
-            starcraft_shap.StarcraftShap,
+            StarcraftShap,
             "_get_max_shap_change",
             return_value=0,
         )
 
         test_data = pd.DataFrame({"a": [1, 4, 8]})
 
-        sc_shap = starcraft_shap.StarcraftShap(
+        sc_shap = StarcraftShap(
             processed_replay=test_data,
             features=["a"],
             predictions=[0, 1, 2],
