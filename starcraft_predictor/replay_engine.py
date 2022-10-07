@@ -1,6 +1,7 @@
 from typing import List
 
 import pandas as pd
+from functools import reduce
 from sc2reader.events.tracker import PlayerStatsEvent
 
 from starcraft_predictor.replay import Replay
@@ -14,6 +15,8 @@ class ReplayEngine:
     batch replay loading.
 
     """
+
+    event_processors = []
 
     METADATA_FIELDS = [
         "filehash",
@@ -47,6 +50,18 @@ class ReplayEngine:
         f"{field}_{player_number}" for field in DATA_FIELDS
         for player_number in [1, 2]
     ]
+
+    def process_replay(cls, replay: Replay):
+        """
+        Processes a replay by calling each event processor in turn and merging
+        the resulting dataframes into one single dataframe.
+        """
+        df_list = [
+            event_processor.process_events(replay=replay)
+            for event_processor in cls.event_processors
+        ]
+        df = reduce(lambda x, y: pd.merge(x, y, on="seconds"), df_list)
+        return df
 
     @classmethod
     def build_dataframe(
