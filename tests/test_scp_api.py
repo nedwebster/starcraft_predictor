@@ -2,7 +2,13 @@ import numpy as np
 import pandas as pd
 from sklearn.pipeline import Pipeline
 from starcraft_predictor.scp_api import load_pretrained_model
-from starcraft_predictor import StarcraftModelEngine, Replay, ReplayEngine, api
+from starcraft_predictor import (
+    StarcraftModelEngine,
+    Replay,
+    ReplayEngine,
+    api,
+    StarcraftShap
+)
 
 
 class TestLoadPretrainedModel:
@@ -67,3 +73,10 @@ class TestScpApi:
         assert output["p1_race"] == "z"
         assert output["p2_race"] == "t"
         assert output["moment"] == (1, 2)
+
+    def test_evaluate_replay_runs(self):
+
+        api.evaluate_replay(
+            "example_data/example_replay.SC2Replay",
+            moment=True,
+        )
