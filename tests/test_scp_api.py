@@ -6,8 +6,7 @@ from starcraft_predictor import (
     StarcraftModelEngine,
     Replay,
     ReplayEngine,
-    api,
-    StarcraftShap
+    api
 )
 
 
