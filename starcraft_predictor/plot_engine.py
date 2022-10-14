@@ -153,6 +153,7 @@ class PlotEngine:
         match_id: str = "TESTID",
         p1_handle: str = "Player 1",
         p2_handle: str = "Player 2",
+        moment: tuple = None,
     ):
         """
         Win probability plot in starcraft theme
@@ -207,6 +208,38 @@ class PlotEngine:
         ax.spines['top'].set_color('#62afd4')
         ax.spines['left'].set_color('#62afd4')
         ax.spines['right'].set_color('#62afd4')
+
+        if moment:
+
+            ax2 = ax.twiny()
+
+            # re-add border colour as second axis overwrites the first
+            ax2.spines['bottom'].set_color('#62afd4')
+            ax2.spines['top'].set_color('#62afd4')
+            ax2.spines['left'].set_color('#62afd4')
+            ax2.spines['right'].set_color('#62afd4')
+
+            # move ax2 ticks to the top of the plot
+            ax2.xaxis.tick_top()
+            ax2.xaxis.set_label_position('top')
+
+            # set x limit of top axis to match the bottom axis
+            ax2.set_xlim(df["seconds"].values[0], df["seconds"].values[-1])
+
+            # set tick and tick_label for important game moment
+            ax2.set_xticks([(moment[0][0] + moment[0][1])*5])
+            ax2.set_xticklabels([f"{moment[1]}: {moment[2]}"])
+            ax2.tick_params(axis='x', colors='#62afd4', labelsize=15)
+
+            # plot 'red zone' for important game moment
+            sns.lineplot(x=moment[0][0]*10, y=[0, 1], color="red")
+            sns.lineplot(x=moment[0][1]*10, y=[0, 1], color="red")
+            ax2.fill_between(
+                x=[moment[0][0]*10, moment[0][1]*10],
+                y1=[1],
+                color='red',
+                alpha=0.1,
+            )
 
         # add custom legend with player colours and names
         patch_1 = mpatches.Patch(

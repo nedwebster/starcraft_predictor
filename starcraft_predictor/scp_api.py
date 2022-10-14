@@ -9,7 +9,8 @@ from starcraft_predictor import (
     ReplayEngine,
     sc2_preprocessing_pipeline,
     PlotEngine,
-    StarcraftModelEngine
+    StarcraftModelEngine,
+    StarcraftShap
 )
 
 
@@ -65,7 +66,11 @@ class ScpApi:
         return predictions
 
     @staticmethod
-    def _get_plot_params(data: pd.DataFrame, predictions: np.ndarray):
+    def _get_plot_params(
+        data: pd.DataFrame,
+        predictions: np.ndarray,
+        moment: tuple,
+    ):
 
         return {
             "df": pd.DataFrame({
@@ -74,6 +79,7 @@ class ScpApi:
             }),
             "p1_race": data["player_1_race"].values[0][0].lower(),
             "p2_race": data["player_2_race"].values[0][0].lower(),
+            "moment": moment,
         }
 
     @classmethod
@@ -84,12 +90,21 @@ class ScpApi:
         return plot
 
     @classmethod
-    def evaluate_replay(cls, path: str):
+    def evaluate_replay(cls, path: str, moment: bool = False):
         replay = cls._load_replay(path=path)
         data = cls._process_replay(replay=replay)
         predictions = cls._generate_predictions(data=data)
+
+        if moment:
+            moment = StarcraftShap(
+                processed_replay=data,
+                features=cls.model.params.FEATURES,
+                predictions=predictions,
+                model=cls.model.model,
+            ).get_moment()
+
         plot_params = cls._get_plot_params(
-            data=data, predictions=predictions,
+            data=data, predictions=predictions, moment=moment,
         )
 
         cls._plot_predictions(plot_params=plot_params)
