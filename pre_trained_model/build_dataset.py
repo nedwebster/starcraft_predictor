@@ -1,7 +1,7 @@
 """Script to build the training dataset from a local store of
 repalys"""
 
-import glob
+from pathlib import Path
 import pandas as pd
 import numpy as np
 
@@ -13,20 +13,26 @@ import starcraft_predictor as scp  # noqa
 np.random.seed(2709)
 
 
-def load_replays(path: str) -> list:
+def load_replays(parent_path: str, chunk_number, chunk_size) -> list:
     """Loads the replays into a list of scp.Replay objects"""
 
-    replay_paths = glob.glob(path + "/*SC2Replay")
+    replay_paths = []
+
+    for path in Path(parent_path).rglob("*SC2Replay"):
+        replay_paths.append(str(path))
+
     print("Loading replays...")
     replays = []
-    for i, path in enumerate(replay_paths):
+    for i, path in enumerate(replay_paths[
+        chunk_number*chunk_size:(chunk_number+1)*(chunk_size)
+    ]):
         print(f"{i+1}/{len(replay_paths)}", end="\r")
 
         try:
             replays.append(scp.Replay.from_path(path=path))
 
         # TODO: Investigate what is causing these errors
-        except (IndexError, AttributeError) as e:  # noqa: F841
+        except (IndexError, AttributeError, ValueError) as e:  # noqa: F841
             print(f"{i+1} failed: {e}")
 
     print("\nReplays loaded")
@@ -70,20 +76,25 @@ def build_sample_column(data: pd.DataFrame):
 def main():
 
     local_path = (
-        "C:/Users/Edward/Documents/python_project/sc2_data/replays"
+        "C:/Users/Edward/Documents/replays"
     )
 
-    replays = load_replays(path=local_path)
-    transformed_dataset = build_dataframe(replays=replays)
-    transformed_dataset = build_sample_column(transformed_dataset)
+    for i in [2]:
+        replays = load_replays(
+            parent_path=local_path,
+            chunk_number=i,
+            chunk_size=500,
+        )
+        transformed_dataset = build_dataframe(replays=replays)
+        transformed_dataset = build_sample_column(transformed_dataset)
 
-    transformed_dataset.to_csv(
-        "C:/Users/Edward/Documents/python_project/sc2_data/"
-        "transformed_data.csv",
-        index=False,
-    )
+        transformed_dataset.to_csv(
+            "C:/Users/Edward/Documents/python_project/sc2_data/"
+            f"transformed_data_{i}.csv",
+            index=False,
+        )
 
-    return transformed_dataset
+        del transformed_dataset
 
 
 if __name__ == "__main__":
