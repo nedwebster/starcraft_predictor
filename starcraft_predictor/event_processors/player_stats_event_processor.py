@@ -4,7 +4,7 @@ import pandas as pd
 from sc2reader.events.tracker import PlayerStatsEvent
 
 from starcraft_predictor.event_processors import BaseEventProcessor
-from starcraft_predictor import Replay
+from starcraft_predictor.replay import Replay
 
 
 class PlayerStatsEventProcessor(BaseEventProcessor):

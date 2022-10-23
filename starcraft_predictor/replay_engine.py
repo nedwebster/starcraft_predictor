@@ -2,7 +2,7 @@ from typing import List
 import pandas as pd
 from functools import reduce
 
-from starcraft_predictor import Replay
+from starcraft_predictor.replay import Replay
 from starcraft_predictor.event_processors import PlayerStatsEventProcessor
 
 

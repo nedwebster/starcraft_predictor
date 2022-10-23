@@ -1,7 +1,7 @@
 import pandas as pd
 from abc import ABC, abstractmethod
 
-from starcraft_predictor import Replay
+from starcraft_predictor.replay import Replay
 
 
 class BaseEventProcessor(ABC):
