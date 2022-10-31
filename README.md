@@ -73,5 +73,4 @@ To run the tests locally, use the following command:
 ## TODO
 - Additional feature to model
 - Explore alternative modelling techniques
-- Key moments overlay on plots
 - Conformal predictors for assessing model confidence
