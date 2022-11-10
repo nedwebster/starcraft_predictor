@@ -47,7 +47,7 @@ class ScpApi:
 
     @staticmethod
     def _process_replay(replay: Replay):
-        data = ReplayEngine.build_dataframe(
+        data = ReplayEngine.process_replay(
             replay,
         )
 
