@@ -34,7 +34,7 @@ class ReplayEngine:
     def process_batch(cls, replays: List[Replay]) -> pd.DataFrame:
         """Process a batch of replays."""
         processed_replays = [cls.process_replay(replay) for replay in replays]
-        return(pd.concat(processed_replays))
+        return pd.concat(processed_replays)
 
     @classmethod
     def process_replay(cls, replay: Replay) -> pd.DataFrame:
