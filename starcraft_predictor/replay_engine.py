@@ -13,39 +13,43 @@ class ReplayEngine:
     The ReplayEngine has functionality for single replay loading, as well as
     batch replay loading.
 
+    Event processors are used by the replay engine to process specific event
+    information for feature construction.
     """
 
-    event_processors = [
-        PlayerStatsEventProcessor
+    EVENT_PROCESSORS = [
+        PlayerStatsEventProcessor,
     ]
 
-    # TODO: Handle these fields with a MetaDataProcessor
     METADATA_FIELDS = [
         "filehash",
         "winner",
         "player_1_race",
         "player_2_race",
-        "seconds",
     ]
 
     @classmethod
-    def process_replays(cls, replays: List[Replay]):
+    def process_batch(cls, replays: List[Replay]) -> pd.DataFrame:
         """
         Process a batch of replays.
         """
-        pass
+        processed_replays = [cls.process_replay(replay) for replay in replays]
+        return(pd.concat(processed_replays))
 
     @classmethod
-    def process_replay(cls, replay: Replay):
+    def process_replay(cls, replay: Replay) -> pd.DataFrame:
         """
         Processes a replay by calling each event processor in turn and merging
-        the resulting dataframes into one single dataframe.
+        the resulting dataframes into one single dataframe. Meta data is also
+        appended to the dataframe.
         """
         df_list = [
             event_processor.process_events(replay=replay)
-            for event_processor in cls.event_processors
+            for event_processor in cls.EVENT_PROCESSORS
         ]
         df = reduce(lambda x, y: pd.merge(x, y, on="seconds"), df_list)
+        for metadata_field in cls.METADATA_FIELDS:
+            df[metadata_field] = getattr(replay, metadata_field)
         return df
 
 
