@@ -49,13 +49,3 @@ class ReplayEngine:
         for metadata_field in cls.METADATA_FIELDS:
             df.insert(0, metadata_field, getattr(replay, metadata_field))
         return df
-
-
-if __name__ == "__main__":
-    import starcraft_predictor as scp
-    replay_path = "example_data/example_replay.SC2Replay"
-    replay = scp.Replay.from_path(
-        path=replay_path
-    )
-    df = ReplayEngine.process_replay(replay=replay)
-    print(df)

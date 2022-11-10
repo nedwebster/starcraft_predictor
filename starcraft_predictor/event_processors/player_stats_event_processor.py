@@ -130,14 +130,3 @@ class PlayerStatsEventProcessor(BaseEventProcessor):
         event_number *= 2
 
         return player_events[event_number: event_number + 2]
-
-
-if __name__ == "__main__":
-    import starcraft_predictor as scp
-    replay_path = "example_data/example_replay.SC2Replay"
-    replay = scp.Replay.from_path(
-        path=replay_path
-    )
-    print(replay)
-    player_event_df = PlayerStatsEventProcessor.process_events(replay=replay)
-    print(player_event_df)
