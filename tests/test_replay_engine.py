@@ -1,11 +1,8 @@
 import warnings
 
-import numpy as np
 import pandas as pd
-import pytest
 from starcraft_predictor import Replay
 from starcraft_predictor import ReplayEngine
-from starcraft_predictor.event_processors import PlayerStatsEventProcessor
 
 warnings.filterwarnings(action="ignore", category=DeprecationWarning)
 
@@ -31,15 +28,6 @@ class TestReplayEngine:
 
     def test_process_replay(self):
 
-        # mocker.patch.object(
-        #     Replay,
-        #     "get_player_events",
-        #     return_value=[
-        #         DummyEvent(player="player_1"),
-        #         DummyEvent(player="player_2"),
-        #     ]
-        # )
-
         test_replay = Replay(**{
             "filehash": "test",
             "winner": 1,
@@ -60,12 +48,18 @@ class TestReplayEngine:
         # revert temporary change
         ReplayEngine.EVENT_PROCESSORS = old_event_processors
 
-        assert output.shape == (1, 5)
-        assert output["filehash"][0] == "test"
-        assert output["winner"][0] == 1
-        assert output["player_1_race"][0] == "z"
-        assert output["player_2_race"][0] == "t"
-        assert output["dummy_field"][0] == 1
+        expected_output = pd.DataFrame(
+            {
+                "filehash": ["test"],
+                "winner": [1],
+                "player_1_race": ["z"],
+                "player_2_race": ["t"],
+                "dummy_field": [1],
+            },
+            index=[0],
+        )
+
+        pd.testing.assert_frame_equal(output, expected_output)
 
     def test_build_batch(self):
 
