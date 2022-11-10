@@ -8,6 +8,9 @@ from starcraft_predictor.replay import Replay
 
 
 class PlayerStatsEventProcessor(BaseEventProcessor):
+    """
+    Class for processing player stats events from a Replay object.
+    """
 
     ID_FIELDS = [
         "seconds"
@@ -40,24 +43,26 @@ class PlayerStatsEventProcessor(BaseEventProcessor):
 
     @classmethod
     def process_events(cls, replay: Replay) -> pd.DataFrame:
+        """Process player stats events across all times for a given replay and
+        return them in a dataframe."""
 
         # initialize empty dataframe with correct column
-        data = cls._init_empty_frame()
+        df = cls._init_empty_frame()
 
         # get  all player events from replay
-        events = cls._get_events(replay=replay)
+        events_list = cls._get_events(replay=replay)
 
         # each timestamp has two events, one for each player
-        num_of_events = int(len(events) / 2)
+        num_of_events = int(len(events_list) / 2)
 
         # for each event, construct a single row of data and append it to the
         # dataframe
         for i in range(num_of_events):
-            event_pair = cls._get_event_pair(events, i)
+            event_pair = cls._get_event_pair(events_list, i)
             event_data = cls._process_event(event_pair)
-            data.loc[i, :] = event_data
+            df.loc[i, :] = event_data
 
-        return data
+        return df
 
     @classmethod
     def _process_event(cls, event: List[PlayerStatsEvent]) -> pd.Series:
@@ -97,10 +102,18 @@ class PlayerStatsEventProcessor(BaseEventProcessor):
         def events_hotfix(player_events: List[PlayerStatsEvent]):
             """Remove any non-paired events from the end of the player
             events list. Non-paired means any timestamped events where
-            only one player has a player event"""
+            only one player has a player event.
+
+            Any number of non-paired player events can happen at the end of
+            the game once one player has surrendered and exited, hence the
+            calculation is not as trivial as looking for an even/odd number of
+            events."""
             for i, event in enumerate(player_events):
                 if i + 1 == len(player_events):
-                    return player_events
+                    if (i + 1) % 2 == 0:
+                        return player_events
+                    else:
+                        return player_events[:i]
                 else:
                     if event.player == player_events[i + 1].player:
                         return player_events[:i]
