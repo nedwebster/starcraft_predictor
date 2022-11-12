@@ -3,7 +3,10 @@ import pandas as pd
 from functools import reduce
 
 from starcraft_predictor.replay import Replay
-from starcraft_predictor.event_processors import PlayerStatsEventProcessor
+from starcraft_predictor.event_processors import (
+    PlayerStatsEventProcessor,
+    UnitEventProcessor,
+)
 
 
 class ReplayEngine:
@@ -20,6 +23,7 @@ class ReplayEngine:
 
     EVENT_PROCESSORS = [
         PlayerStatsEventProcessor,
+        UnitEventProcessor,
     ]
 
     # Supplied in reverse order for df.insert(loc=0) purposes.
