@@ -38,7 +38,7 @@ def build_dataframe(replays: list) -> pd.DataFrame:
     then transform the data to be model ready"""
 
     print("Building dataframe...")
-    replay_dataframe = scp.ReplayEngine.build_batch(
+    replay_dataframe = scp.ReplayEngine.process_batch(
         replays=replays,
     )
 

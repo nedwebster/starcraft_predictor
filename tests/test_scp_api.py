@@ -31,7 +31,7 @@ class TestScpApi:
 
     def test_process_replay(self, mocker):
 
-        mocker.patch.object(ReplayEngine, "build_dataframe")
+        mocker.patch.object(ReplayEngine, "process_replay")
         mocker.patch.object(Pipeline, "transform", return_value="test")
 
         output = api._process_replay("dummy_replay")
