@@ -1,7 +1,4 @@
-from typing import List
-
 import sc2reader
-from sc2reader.events.tracker import PlayerStatsEvent
 
 
 class Replay:
