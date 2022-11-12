@@ -44,6 +44,10 @@ class Replay:
         len_in_seconds = self.events[-1].second
         return f"{len_in_seconds} seconds"
 
+    @property
+    def game_length_int(self):
+        return self.events[-1].second
+
     @classmethod
     def from_replay(cls, replay: sc2reader.resources.Replay):
         """Constructor to build class from sc2reader replay"""
