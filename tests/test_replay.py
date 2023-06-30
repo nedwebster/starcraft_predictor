@@ -93,3 +93,25 @@ class TestReplay():
         output = test_replay.get_player_events()
 
         assert len(output) == expected_output
+
+    def test_from_replay_errors(self):
+
+        with pytest.raises(
+            TypeError,
+            match="replay_file must be sc2reader.resources.Replay",
+        ):
+            Replay.from_replay(replay="test")
+
+    def test_from_path_error(self):
+
+        with pytest.raises(
+            TypeError,
+            match="path must be a str",
+        ):
+            Replay.from_path(123)
+
+        with pytest.raises(
+            ValueError,
+            match="path must point to a .SC2Replay file"
+        ):
+            Replay.from_path("test_path")

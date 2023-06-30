@@ -1,1 +1,4 @@
 include starcraft_predictor/modelling/trained_model.pkl
+include starcraft_predictor/fonts/starcraft_font.ttf
+include tests/baseline/test_win_probability_plot.png
+include example_data/example_replay.SC2Replay

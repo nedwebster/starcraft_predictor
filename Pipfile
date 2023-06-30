@@ -18,6 +18,8 @@ statsmodels = "==0.13.2"
 pyzmq = "==22.0.0"
 boruta = "==0.3"
 matplotlib = "==3.5.3"
+starcraft-predictor = {editable = true, path = "."}
+shap = "==0.41.0"
 
 [dev-packages]
 flake8 = "*"
@@ -25,6 +27,7 @@ coverage = "*"
 pytest-cov = "*"
 pytest = "*"
 pytest-mock = "*"
+pytest-mpl = "*"
 
 [requires]
 python_version = "3.8"

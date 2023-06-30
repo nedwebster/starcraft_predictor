@@ -1,7 +1,7 @@
-name: CodeCov
+name: CICD
 on: [push, pull_request]
 jobs:
-  run:
+  flake8:
     runs-on: ubuntu-latest
     env:
       OS: ubuntu-latest
@@ -15,12 +15,31 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: 3.8
-    - name: Generate Report
+    - name: Run Flake8
+      run: |
+        pip install flake8
+        flake8 .
+
+  codecov:
+    runs-on: ubuntu-latest
+    env:
+      OS: ubuntu-latest
+      PYTHON: '3.8'
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: ‘2’
+
+    - name: Setup Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: 3.8
+    - name: Generate CodeCov Report
       run: |
         pip install pipenv==2022.9.21
         pipenv install --dev
         pipenv install .
-        pipenv run pytest --cov-report xml --cov=starcraft_predictor tests/
+        pipenv run pytest --cov-report xml --cov=starcraft_predictor --mpl tests/
     - name: Upload Coverage to Codecov
       uses: codecov/codecov-action@v3
       with:

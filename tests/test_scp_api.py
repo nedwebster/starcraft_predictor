@@ -2,7 +2,12 @@ import numpy as np
 import pandas as pd
 from sklearn.pipeline import Pipeline
 from starcraft_predictor.scp_api import load_pretrained_model
-from starcraft_predictor import StarcraftModelEngine, Replay, ReplayEngine, api
+from starcraft_predictor import (
+    StarcraftModelEngine,
+    Replay,
+    ReplayEngine,
+    api
+)
 
 
 class TestLoadPretrainedModel:
@@ -55,13 +60,22 @@ class TestScpApi:
 
         output = api._get_plot_params(
             data=input_df,
-            predictions=np.array([0.5])
+            predictions=np.array([0.5]),
+            moment=(1, 2)
         )
 
-        assert list(output.keys()) == ["df", "p1_race", "p2_race"]
+        assert list(output.keys()) == ["df", "p1_race", "p2_race", "moment"]
         pd.testing.assert_frame_equal(
             output["df"],
             pd.DataFrame({"seconds": [10], "win_prob": [0.5]})
         )
         assert output["p1_race"] == "z"
         assert output["p2_race"] == "t"
+        assert output["moment"] == (1, 2)
+
+    def test_evaluate_replay_runs(self):
+
+        api.evaluate_replay(
+            "example_data/example_replay.SC2Replay",
+            moment=True,
+        )
