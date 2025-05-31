@@ -1,18 +1,17 @@
 import os
 
-import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as font_manager
 import matplotlib.patches as mpatches
 import seaborn as sns
 
+from starcraft_predictor.replays.replay import Replay
+
 
 def get_font_prop():
 
-    PACKAGE_INSTALLATION_PATH = os.path.dirname(
-        os.path.abspath(__file__)
-    )
+    PACKAGE_INSTALLATION_PATH = os.path.dirname(os.path.abspath(__file__))
 
     font_prop = font_manager.FontProperties(
         fname=PACKAGE_INSTALLATION_PATH + "/fonts/starcraft_font.ttf"
@@ -30,13 +29,14 @@ class PlotEngine:
     """
 
     RACE_COLORS = {
-        "p": "#0C48CC",
-        "t": "#F40404",
-        "z": "#88409C",
+        "Protoss": "#0C48CC",
+        "Terran": "#F40404",
+        "Zerg": "#88409C",
+        "Random": "#808080",
     }
 
     # set global setting for background
-    plt.rcParams['font.family'] = 'monospace'
+    plt.rcParams["font.family"] = "monospace"
     FONT_PROP = get_font_prop()
 
     @staticmethod
@@ -50,10 +50,10 @@ class PlotEngine:
         y_temp = list(np.subtract(y, threshold))
 
         for i in range(len(y_temp) - 1):
-            if (np.sign(y_temp[i]) == 0) or (np.sign(y_temp[i+1]) == 0):
+            if (np.sign(y_temp[i]) == 0) or (np.sign(y_temp[i + 1]) == 0):
                 pass
             elif np.sign(y_temp[i]) != np.sign(y_temp[i + 1]):
-                pairs.append((i, i+1))
+                pairs.append((i, i + 1))
 
         return pairs
 
@@ -65,17 +65,16 @@ class PlotEngine:
 
         """
 
-        rate_of_change = (
-            (y[crossing_index[1]] - y[crossing_index[0]])
-            / (x[crossing_index[1]] - x[crossing_index[0]])
+        rate_of_change = (y[crossing_index[1]] - y[crossing_index[0]]) / (
+            x[crossing_index[1]] - x[crossing_index[0]]
         )
 
         x_movement = (threshold - y[crossing_index[0]]) / rate_of_change
 
         new_x = x[crossing_index[0]] + x_movement
 
-        x.insert(crossing_index[1], new_x)
-        y.insert(crossing_index[1], threshold)
+        x = np.insert(x, crossing_index[1], new_x)
+        y = np.insert(y, crossing_index[1], threshold)
 
         return x, y
 
@@ -91,7 +90,10 @@ class PlotEngine:
         for i, pair in enumerate(crossing_pairs):
 
             pair = tuple(np.add(pair, i))
-            x, y, = self._insert_new_values(x, y, pair, threshold)
+            (
+                x,
+                y,
+            ) = self._insert_new_values(x, y, pair, threshold)
 
         return x, y
 
@@ -145,11 +147,10 @@ class PlotEngine:
 
         return ax
 
-    def win_probability_plot(
+    def plot_win_probability(
         self,
-        df: pd.DataFrame,
-        p1_race: str,
-        p2_race: str,
+        replay: Replay,
+        predictions: list[float],
         match_id: str = "TESTID",
         p1_handle: str = "Player 1",
         p2_handle: str = "Player 2",
@@ -166,9 +167,11 @@ class PlotEngine:
         # set facecolor
         ax.set_facecolor("#010713")
 
+        seconds = np.array([x * 10 for x in range(0, len(predictions))])
+
         x, y = self._add_threshold_points(
-            list(df["seconds"].values),
-            list(df["win_prob"].values),
+            seconds,
+            predictions,
             threshold=0.5,
         )
 
@@ -177,14 +180,14 @@ class PlotEngine:
             ax,
             x,
             y,
-            .5,
-            self.RACE_COLORS[p1_race],
-            self.RACE_COLORS[p2_race],
+            0.5,
+            self.RACE_COLORS[replay.player_1_race.value],
+            self.RACE_COLORS[replay.player_2_race.value],
         )
 
         # plot 50% line
         sns.lineplot(
-            x=df["seconds"],
+            x=seconds,
             y=0.5,
             color="white",
             ls="dashed",
@@ -192,62 +195,60 @@ class PlotEngine:
         )
 
         # set ticks and tick parameters (font, color, etc.)
-        ax.set_xticks(df["seconds"].values[::6])
-        ax.set_xticklabels([
-            int(val) for val in df["seconds"].values[::6] / 60
-        ])
-        ax.tick_params(axis='x', colors='#62afd4', labelsize=15)
-        ax.tick_params(axis='y', colors='#62afd4', labelsize=15)
+        ax.set_xticks(seconds[::6])
+        ax.set_xticklabels([int(val) for val in seconds[::6] / 60])
+        ax.tick_params(axis="x", colors="#62afd4", labelsize=15)
+        ax.tick_params(axis="y", colors="#62afd4", labelsize=15)
 
         # set x and y axis limits
         ax.set_ylim(0, 1)
-        ax.set_xlim(df["seconds"].values[0], df["seconds"].values[-1])
+        ax.set_xlim(seconds[0], seconds[-1])
 
         # add border colour to plot
-        ax.spines['bottom'].set_color('#62afd4')
-        ax.spines['top'].set_color('#62afd4')
-        ax.spines['left'].set_color('#62afd4')
-        ax.spines['right'].set_color('#62afd4')
+        ax.spines["bottom"].set_color("#62afd4")
+        ax.spines["top"].set_color("#62afd4")
+        ax.spines["left"].set_color("#62afd4")
+        ax.spines["right"].set_color("#62afd4")
 
         if moment:
 
             ax2 = ax.twiny()
 
             # re-add border colour as second axis overwrites the first
-            ax2.spines['bottom'].set_color('#62afd4')
-            ax2.spines['top'].set_color('#62afd4')
-            ax2.spines['left'].set_color('#62afd4')
-            ax2.spines['right'].set_color('#62afd4')
+            ax2.spines["bottom"].set_color("#62afd4")
+            ax2.spines["top"].set_color("#62afd4")
+            ax2.spines["left"].set_color("#62afd4")
+            ax2.spines["right"].set_color("#62afd4")
 
             # move ax2 ticks to the top of the plot
             ax2.xaxis.tick_top()
-            ax2.xaxis.set_label_position('top')
+            ax2.xaxis.set_label_position("top")
 
             # set x limit of top axis to match the bottom axis
-            ax2.set_xlim(df["seconds"].values[0], df["seconds"].values[-1])
+            ax2.set_xlim(seconds[0], seconds[-1])
 
             # set tick and tick_label for important game moment
-            ax2.set_xticks([(moment[0][0] + moment[0][1])*5])
+            ax2.set_xticks([(moment[0][0] + moment[0][1]) * 5])
             ax2.set_xticklabels([f"{moment[1]}: {moment[2]}"])
-            ax2.tick_params(axis='x', colors='#62afd4', labelsize=15)
+            ax2.tick_params(axis="x", colors="#62afd4", labelsize=15)
 
             # plot 'red zone' for important game moment
-            sns.lineplot(x=moment[0][0]*10, y=[0, 1], color="red")
-            sns.lineplot(x=moment[0][1]*10, y=[0, 1], color="red")
+            sns.lineplot(x=moment[0][0] * 10, y=[0, 1], color="red")
+            sns.lineplot(x=moment[0][1] * 10, y=[0, 1], color="red")
             ax2.fill_between(
-                x=[moment[0][0]*10, moment[0][1]*10],
+                x=[moment[0][0] * 10, moment[0][1] * 10],
                 y1=[1],
-                color='red',
+                color="red",
                 alpha=0.1,
             )
 
         # add custom legend with player colours and names
         patch_1 = mpatches.Patch(
-            color=self.RACE_COLORS[p1_race],
+            color=self.RACE_COLORS[replay.player_1_race.value],
             label=p1_handle,
         )
         patch_2 = mpatches.Patch(
-            color=self.RACE_COLORS[p2_race],
+            color=self.RACE_COLORS[replay.player_2_race.value],
             label=p2_handle,
         )
         plt.legend(

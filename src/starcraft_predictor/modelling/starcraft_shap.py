@@ -1,15 +1,17 @@
+import pandas as pd
 import numpy as np
 import shap
 
 import warnings
+
+import xgboost as xgb
 
 
 # ignore SHAP warning about XGBoost arguments
 warnings.filterwarnings(
     "ignore",
     message=(
-        "ntree_limit is deprecated, use `iteration_range`"
-        " or model slicing instead."
+        "ntree_limit is deprecated, use `iteration_range`" " or model slicing instead."
     ),
     category=Warning,
 )
@@ -17,19 +19,13 @@ warnings.filterwarnings(
 
 class StarcraftShap:
 
-    def __init__(self, processed_replay, features, predictions, model):
-
-        self.predictions = predictions
-        self.processed_replay = processed_replay
-        self.features = features
+    def __init__(self, model: xgb.XGBClassifier, features: list[str]):
         self.model = model
-        self.moment_index = self._get_moment_index()
+        self.features = features
 
-    def _get_min_max_indexes(self):
+    def _get_spline_points(self, predictions):
         """
-        Iteratively go through a list and
-        identify all the local maxima and local minima,
-        then return the index pairs of the each line segment.
+        Iteratively go through a list and identify all the start and end indexes for monotonic splines.
 
         eg: given predictions = [1, 3, 5, 3, 2, 8]
 
@@ -40,7 +36,7 @@ class StarcraftShap:
         min_max_points = []
         direction = ""
 
-        for i, pred in enumerate(self.predictions):
+        for i, pred in enumerate(predictions):
 
             # append the first value as a local maxima/minima
             if i == 0:
@@ -62,97 +58,80 @@ class StarcraftShap:
                     if pred < pred_value:
                         pred_value = pred
                     else:
-                        min_max_points.append(i-1)
+                        min_max_points.append(i - 1)
                         direction = "up"
                         pred_value = pred
                 elif direction == "up":
                     if pred > pred_value:
                         pred_value = pred
                     else:
-                        min_max_points.append(i-1)
+                        min_max_points.append(i - 1)
                         direction = "down"
                         pred_value = pred
 
         # append the last point as a local maxima/minima
-        min_max_points.append(len(self.predictions) - 1)
+        min_max_points.append(len(predictions) - 1)
 
         min_max_pairs = [
-            [min_max_points[j], min_max_points[j+1]]
+            [min_max_points[j], min_max_points[j + 1]]
             for j in range(len(min_max_points) - 1)
         ]
 
         return min_max_pairs
 
-    def _get_difference(self, index_pair):
+    def _get_moment_index(self, predictions):
         """
-        For a given index pair, get the difference in
-        prediction values.
-
-        """
-
-        difference = (
-            self.predictions[index_pair[1]]
-            - self.predictions[index_pair[0]]
-        )
-
-        return difference
-
-    def _get_moment_index(self):
-        """
-        Get the index for the games 'moment', defined
-        as the point in the game where the probability
-        monotonically shifts the most. This can happen
-        over any length of game time.
-
+        Get the index for the games 'moment', defined as the point in the game where the probability monotonically
+        shifts the most. This can happen over any length of game time.
         """
 
-        min_max_indexes = self._get_min_max_indexes()
+        spline_points = self._get_spline_points(predictions)
 
         differences = [
-            abs(self._get_difference(index_pair))
-            for index_pair in min_max_indexes
+            abs(predictions[index_pair[1]] - predictions[index_pair[0]])
+            for index_pair in spline_points
         ]
 
-        return min_max_indexes[differences.index(max(differences))]
+        return spline_points[differences.index(max(differences))]
 
-    def _get_shap_values(self):
+    def _get_shap_values(self, data: pd.DataFrame):
 
         explainer = shap.TreeExplainer(self.model)
-        shap_values = explainer.shap_values(
-            self.processed_replay[self.features]
-        )
+        shap_values = explainer.shap_values(data[self.features])
 
         return shap_values
 
     def _get_max_shap_change(self, shap_values, index_pair):
 
-        abs_diff = list(abs(
-            np.array(shap_values[index_pair[0]])
-            - np.array(shap_values[index_pair[1]])
-        ))
+        abs_diff = list(
+            abs(
+                np.array(shap_values[index_pair[0]])
+                - np.array(shap_values[index_pair[1]])
+            )
+        )
 
         max_index = abs_diff.index(max(abs_diff))
 
         return max_index
 
-    def _get_feature_difference(
-        self, feature, index_pair
-    ):
+    def _get_feature_difference(self, data, feature, index_pair):
 
-        first_index_value = self.processed_replay.loc[index_pair[0], feature]
-        second_index_value = self.processed_replay.loc[index_pair[1], feature]
+        first_index_value = data.loc[index_pair[0], feature]
+        second_index_value = data.loc[index_pair[1], feature]
 
         feature_change = abs(first_index_value - second_index_value)
 
         return feature_change
 
-    def get_moment(self):
+    def get_moment(self, data: pd.DataFrame, predictions: np.ndarray):
 
-        moment_index = self._get_moment_index()
-        shap_values = self._get_shap_values()
+        moment_index = self._get_moment_index(predictions)
+        shap_values = self._get_shap_values(data)
+
         feature_index = self._get_max_shap_change(shap_values, moment_index)
         feature = self.features[feature_index]
         feature_difference = self._get_feature_difference(
+            data,
             feature,
             moment_index,
         )

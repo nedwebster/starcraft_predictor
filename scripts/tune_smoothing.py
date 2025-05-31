@@ -1,3 +1,5 @@
+# THIS IS NOT CURRENTLY WORKING!!!
+
 import sys
 import pandas as pd
 import numpy as np
@@ -13,21 +15,17 @@ EWM_ALPHA_LIST = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
 def load_data(path: str) -> pd.DataFrame:
     """Load the data and subset to just test data"""
 
-    data = pd.read_csv(path)
+    data = pd.read_pickle(path)
     data = data[data["sample"] == "test"]
 
     return data
 
 
-def generate_smoothed_predictions(
-    data: pd.DataFrame, alpha: float
-) -> np.ndarray:
+def generate_smoothed_predictions(data: pd.DataFrame, alpha: float) -> np.ndarray:
     """Generate smoothed predictions for a given alpha"""
 
     predictions = scp.starcraft_model.predict(data, smoothed=False)
-    smoothed_predictions = np.array(
-        pd.Series(predictions).ewm(alpha=alpha).mean()
-    )
+    smoothed_predictions = np.array(pd.Series(predictions).ewm(alpha=alpha).mean())
 
     return smoothed_predictions
 
@@ -39,14 +37,16 @@ def generate_auc_scores(data: pd.DataFrame) -> dict:
     auc_scores = {}
 
     base_predictions = scp.starcraft_model.predict(
-        data, smoothed=False,
+        data,
+        smoothed=False,
     )
 
     auc_scores[0] = roc_auc_score(data["winner"], base_predictions)
 
     for alpha in EWM_ALPHA_LIST:
         smoothed_predictions = generate_smoothed_predictions(
-            data=data, alpha=alpha,
+            data=data,
+            alpha=alpha,
         )
 
         auc_scores[alpha] = roc_auc_score(data["winner"], smoothed_predictions)
@@ -68,12 +68,12 @@ def evaluate_auc_scores(auc_scores: dict):
 
 def main():
 
-    path = (
-        "C:/Users/Edward/Documents/python_project"
-        "/sc2_data/transformed_data.csv"
+    local_path = (
+        "/Users/nedwebster/Documents/python_projects/personal_projects/starcraft_predictor/"
+        "transformed_data.pkl"
     )
 
-    data = load_data(path)
+    data = load_data(local_path)
 
     auc_scores = generate_auc_scores(data)
 
