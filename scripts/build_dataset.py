@@ -2,7 +2,8 @@ import glob
 
 import numpy as np
 import pandas as pd
-import starcraft_predictor as scp
+from starcraft_predictor import ReplayProcessor
+from starcraft_predictor import preprocessing_pipeline
 from starcraft_predictor.replays.replay import Replay
 
 
@@ -19,7 +20,7 @@ def load_replays(path: str) -> list:
         print(f"{i+1}/{len(replay_paths)}", end="\r")
 
         try:
-            replay = scp.Replay.from_path(path=path)
+            replay = Replay.from_path(path=path)
             replays.append(replay)
         except Exception as e:
             print(f"{i+1} failed: {e}")
@@ -30,10 +31,11 @@ def load_replays(path: str) -> list:
 
 def build_dataframe(replays: list[Replay]) -> pd.DataFrame:
     print("Building dataframe...")
-    replay_dataframe = scp.replay_processor.process_batch(replays=replays)
+    replay_processor = ReplayProcessor()
+    replay_dataframe = replay_processor.process_batch(replays=replays)
 
     # note: the pipeline learns no information, hence no fit is needed
-    transformed_data = scp.preprocessing_pipeline.transform(
+    transformed_data = preprocessing_pipeline.transform(
         replay_dataframe,
     )
 
@@ -62,7 +64,7 @@ def main():
     replays = load_replays(path=local_path)
     data = build_dataframe(replays)
     data = build_sample_column(data)
-    data.to_pickle("transformed_data.pkl")
+    data.to_pickle("data/transformed_data.pkl")
 
 
 if __name__ == "__main__":

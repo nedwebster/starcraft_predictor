@@ -56,7 +56,7 @@ def print_metrics(
 def main():
 
     local_path = (
-        "/Users/nedwebster/Documents/python_projects/personal_projects/starcraft_predictor/"
+        "/Users/nedwebster/Documents/python_projects/personal_projects/starcraft_predictor/data/"
         "transformed_data.pkl"
     )
     data = load_data(path=local_path)

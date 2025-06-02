@@ -1,11 +1,12 @@
 import matplotlib.pyplot as plt
-from starcraft_predictor import replay_scorer
+from starcraft_predictor import load_scorer
 
 
 def score_replay(replay_path: str):
     """
     Score a replay file and return the predicted probabilities.
     """
+    replay_scorer = load_scorer()
     fig = replay_scorer.score_replay(replay_path)
     return fig
 

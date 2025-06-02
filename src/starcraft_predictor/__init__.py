@@ -6,22 +6,18 @@ from starcraft_predictor.plots.plot_engine import PlotEngine
 from starcraft_predictor.modelling.starcraft_shap import StarcraftShap
 
 
-replay_processor = ReplayProcessor()
-model = StarcraftModel.load()
-starcraft_shap = StarcraftShap(model=model.model, features=model.features)
-plot_engine = PlotEngine()
+def load_scorer() -> ReplayScorer:
+    replay_processor = ReplayProcessor()
+    model = StarcraftModel.load()
+    starcraft_shap = StarcraftShap(model=model.model, features=model.features)
+    plot_engine = PlotEngine()
 
-replay_scorer = ReplayScorer(
-    replay_processor=replay_processor,
-    pipeline=preprocessing_pipeline,
-    model=model,
-    plot_engine=plot_engine,
-    starcraft_shap=starcraft_shap,
-)
+    replay_scorer = ReplayScorer(
+        replay_processor=replay_processor,
+        pipeline=preprocessing_pipeline,
+        model=model,
+        plot_engine=plot_engine,
+        starcraft_shap=starcraft_shap,
+    )
 
-
-def score_replay(replay_path: str):
-    """
-    Score a Replay object.
-    """
-    return replay_scorer.score_replay(replay_path)
+    return replay_scorer

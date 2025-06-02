@@ -69,12 +69,7 @@ class Replay(BaseModel):
     @classmethod
     def from_path(cls, path: str):
         """Constructor to build class from replay file path"""
-
-        if not path.endswith(".SC2Replay"):
-            raise ValueError("path must point to a .SC2Replay file")
-
         replay = sc2reader.load_replay(path)
-
         return cls.from_replay(replay=replay)
 
 
