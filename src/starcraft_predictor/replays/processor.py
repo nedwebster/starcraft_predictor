@@ -23,6 +23,10 @@ class ReplayProcessor:
             for player_number in [1, 2]
         ]
 
+    def load_replay(self, replay_path: str) -> Replay:
+        """Load a Replay object from a file path."""
+        return Replay.from_path(replay_path)
+
     def process_replay(self, replay: Replay) -> pd.DataFrame:
         """Process an individual Replay object into a Pandas Dataframe."""
         event_pairs = build_event_pairs(replay.events)
