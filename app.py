@@ -1,4 +1,4 @@
-import app as st
+import streamlit as st
 from starcraft_predictor import load_scorer
 
 st.title("Starcraft Predictor")

@@ -1,7 +1,7 @@
 ![CICD](https://github.com/nedwebster/starcraft_predictor/actions/workflows/cicd.yml/badge.svg)
 
 # starcraft_predictor
-`starcraft_predictor` contains a pre-trained XGBoost model that can be used to generate win probabilities throughout a Starcraft 2 game. The package uses `.SC2Replay` files to load in game metadata and generate predictions based on the state of the game at every 10 second interval.
+`starcraft_predictor` contains a pre-trained ML model that can be used to generate win probabilities throughout a Starcraft 2 game. The package uses `.SC2Replay` files to load in game metadata and generate predictions based on the state of the game at every 10 second interval.
 
 
 ## Setup
@@ -11,53 +11,49 @@ The package is not currently on PyPi so the best way to use it locally is to clo
 git clone https://github.com/nedwebster/starcraft_predictor.git
 ```
 
-Then navigate into the directory and run 
+The project uses `uv` for package management and project builds. Install the dependencies and the package using:
 
 ```
-pip install .
+uv sync --reinstall
 ```
 
 ## Usage
 
-To analyse a replay, use the `score_replay` function from `starcraft_predictor`.
+To analyse a replay, load the `replay_scorer` and use the `score_replay()` method. The `load_scorer()` function loads the pre-trained model, and can score replays given a path.
 
 Run the following code in a notebook:
 
 ```
-from starcraft_predictor import score_replay
+from starcraft_predictor import load_scorer
 
-score_replay("path/to/replay.SC2Replay")
+replay_scorer = load_scorer()
+
+replay_scorer.score_replay("path/to/replay.SC2Replay")
 ```
 
 ![](example_data/sc2_plot.png)
 
+
+## Web App
+The project uses streamlit to deploy the application as a simple web app. To run the streamlit app, run:
+
+```
+uv run streamlit run app.py
+```
+
+From there you can upload replays from your local machine and get win probability prediction plots.
 
 ## Folder Structure
 ```
 .
 ├── example_data/                        <-- example data to use in the tutorials 
 ├── example_notebooks/                   <-- notebook tutorials for app functionality
-├── ml_analysis/                         <-- adhoc analysis that guides parts of the ML project
+├── ml_analysis/                         <-- adhoc analysis notebooks that guides parts of the ML project
 ├── scripts/                             <-- python scripts used to train the model and score replays 
+├── app.py                               <-- streamlit app file for running the streamlit web app.
 └── src/starcraft_predictor/             <-- main app folder/
     ├── modelling/                       <-- code for the ml model
     ├── plots/                           <-- code for plotting replay predictions
     ├── processing/                      <-- code for processing data ready for the ML model
     ├── replays/                         <-- code 
 ```
-
-## Testing
-The package uses `pytest` as it's testing framework. It also uses the `pytest-mpl` addon for testing plots (documentation can be found here: https://github.com/matplotlib/pytest-mpl).
-
-Baseline plots have been created for `pytest-mpl` with the command:
-```pytest --mpl-generate-path=tests/baseline```
-This command does not need to be re-run by the user, unless changes are made that alter the output of the plots.
-
-To run the tests locally, use the following command:
-
-```pytest --mpl tests/.```
-
-## TODO
-- Additional feature to model
-- Explore alternative modelling techniques
-- Conformal predictors for assessing model confidence
