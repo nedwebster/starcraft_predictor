@@ -2,6 +2,8 @@ from enum import Enum
 
 import sc2reader
 
+from starcraft_predictor.errors import ReplayIngestionError
+
 TRACKED_UNIT_TYPES = {
     "Protoss": [
         "Probe",
@@ -79,8 +81,7 @@ EVENT_DATA_FIELDS = [
 
 
 class Matchup(Enum):
-    """
-    Possible combinations for matchups in StarCraft II.
+    """Possible combinations for matchups in StarCraft II.
 
     Note: These are NOT permutations. TvZ and ZvT are considered the same matchup, and the replay process will reverse
     the players in ZvT to match the TvZ Matchup.
@@ -95,15 +96,35 @@ class Matchup(Enum):
     ZVZ = "Zerg vs Zerg"
 
     @property
-    def race1(self):
+    def race1(self) -> str:
+        """The first race in the matchup."""
         return self.value.split(" ")[0]
 
     @property
-    def race2(self):
+    def race2(self) -> str:
+        """The second race in the matchup."""
         return self.value.split(" ")[2]
+
+    @property
+    def races(self) -> list[str]:
+        """The races in the matchup."""
+        return [self.race1, self.race2]
 
     @classmethod
     def from_replay(cls, replay: sc2reader.resources.Replay) -> "Matchup":
-        races = [x.pick_race for x in replay.players]
+        """Create a Matchup from a replay."""
+        races = [x.play_race for x in replay.players]
         races.sort()
         return cls(f"{races[0]} vs {races[1]}")
+
+
+def load_replay(
+    replay_path: str | None = None,
+    replay: sc2reader.resources.Replay | None = None,
+) -> sc2reader.resources.Replay:
+    """Load a replay from a path or an already loaded replay object."""
+    if replay_path is not None and replay is not None:
+        raise ReplayIngestionError
+    if replay_path is not None:
+        return sc2reader.load_replay(replay_path)
+    return replay

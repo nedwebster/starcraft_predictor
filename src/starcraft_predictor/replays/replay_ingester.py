@@ -12,27 +12,11 @@ from sc2reader.events.tracker import (
     UnitTypeChangeEvent,
 )
 
-from starcraft_predictor.errors import (
-    IncorrectMatchupError,
-    ReplayIngestionError,
-    UnpairedPlayerStatEventError,
-)
-from starcraft_predictor.replays import EVENT_DATA_FIELDS, TRACKED_UNIT_TYPES, Matchup
+from starcraft_predictor.errors import UnpairedPlayerStatEventError
+from starcraft_predictor.replays import EVENT_DATA_FIELDS, TRACKED_UNIT_TYPES, Matchup, load_replay
+from starcraft_predictor.replays.validator import ReplayValidator
 
 logger = logging.getLogger(__name__)
-
-
-def load_replay(
-    replay_path: str | None = None,
-    replay: sc2reader.resources.Replay | None = None,
-) -> sc2reader.resources.Replay:
-    """Load a replay from a path or an already loaded replay object."""
-    if replay_path is not None and replay is not None:
-        raise ReplayIngestionError
-    if replay_path is not None:
-        return sc2reader.load_replay(replay_path)
-    return replay
-
 
 
 class ReplayIngester:
@@ -139,7 +123,11 @@ class ReplayIngester:
         self.player_stats_event_cache = []
         self.inverse_players = False
 
-    def ingest_replay(self, replay_path: str | None = None, replay: sc2reader.resources.Replay | None = None) -> pd.DataFrame:
+    def ingest_replay(
+        self,
+        replay_path: str | None = None,
+        replay: sc2reader.resources.Replay | None = None,
+    ) -> pd.DataFrame:
         """Ingest a replay from a path pointing to a .SC2Replay file.
 
         Parameters
@@ -157,7 +145,7 @@ class ReplayIngester:
 
         """
         replay = load_replay(replay_path, replay)
-
+        ReplayValidator(replay, self.matchup).validate()
         self._reset_state()
         self.init_replay_tracking(replay)
 
@@ -175,46 +163,21 @@ class ReplayIngester:
 
     def init_replay_tracking(
         self, replay: sc2reader.resources.Replay,
-    ) -> tuple[str, str, str]:
+    ) -> None:
         """Initialise the replay tracking by resetting the initial state and extracting metadata."""
-        self._validate_replay(replay)
-
         self.players = replay.players
+        self.inverse_players = self.players[0].play_race == self.matchup.race1
 
         self.replay_metadata = {
             "filehash": replay.filehash,
-            "winner": self.map_winner(replay),
+            "winner": abs(replay.winner.players[0].pid - 1 - int(self.inverse_players)),
             "player_1_race": replay.players[self.inverse_players].play_race,
             "player_2_race": replay.players[1 - self.inverse_players].play_race,
         }
 
-    def _validate_replay(self, replay: sc2reader.resources.Replay) -> None:
-        """Validate that the replay is a 1v1 replay and matches the expected matchup."""
-        if replay.type != "1v1":
-            msg = "Replay must be a 1v1 replay."
-            raise ValueError(msg)
-
-        player_1_race = replay.players[0].play_race
-        player_2_race = replay.players[1].play_race
-
-        if (player_1_race == self.matchup.race1) and (
-            player_2_race == self.matchup.race2
-        ):
-            self.inverse_players = False
-        elif (player_1_race == self.matchup.race2) and (
-            player_2_race == self.matchup.race1
-        ):
-            self.inverse_players = True
-        else:
-            raise IncorrectMatchupError
-
-    def map_winner(self, replay: sc2reader.resources.Replay) -> int:
-        """Map the game winner from [1, 2] to binary [0, 1], accounting for the inverse players flag."""
-        return abs(replay.winner.players[0].pid - 1 - int(self.inverse_players))
-
     def ingest_unit_born_event(self, event: UnitBornEvent) -> None:
         """Ingest a UnitBornEvent and update the units dictionary."""
-        if event.control_pid == 0:
+        if event.control_pid == 0:  # Some events during the game setup are not assigned to player 1 or player 2
             return
 
         player = self.players[event.control_pid - 1]

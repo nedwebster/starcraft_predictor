@@ -20,3 +20,11 @@ class ReplayIngestionError(Exception):
     def __init__(self):
         self.message = "Either provide a replay_path or a replay object, not both!"
         super().__init__(self.message)
+
+
+class InvalidReplayError(Exception):
+    """Raised when the replay is invalid."""
+
+    def __init__(self):
+        self.message = "Replay is invalid. Replays must be 1v1 games and match the expected matchup."
+        super().__init__(self.message)
