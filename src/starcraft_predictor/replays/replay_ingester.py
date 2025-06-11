@@ -1,5 +1,4 @@
 import logging
-from collections import Counter
 
 import pandas as pd
 import sc2reader
@@ -13,7 +12,10 @@ from sc2reader.events.tracker import (
 )
 
 from starcraft_predictor.errors import UnpairedPlayerStatEventError
-from starcraft_predictor.replays import EVENT_DATA_FIELDS, TRACKED_UNIT_TYPES, Matchup, load_replay
+from starcraft_predictor.replays import load_replay
+from starcraft_predictor.replays.matchup import Matchup
+from starcraft_predictor.replays.player_stats_tracker import PlayerStatsTracker
+from starcraft_predictor.replays.unit_tracker import UnitTracker
 from starcraft_predictor.replays.validator import ReplayValidator
 
 logger = logging.getLogger(__name__)
@@ -45,19 +47,9 @@ class ReplayIngester:
         List of players in the replay.
     replay_metadata : dict
         A dictionary of metadata items ingested from the replay at the start.
-    tracked_units : dict
-        A dictionary containing the currently tracked units for both players, indexed by player ID. Eg:
-        {1: {unit_id: unit_type_name, ...}, 2: {unit_id: unit_type_name, ...}}
-    tracked_initialisations : dict
-        A dictionary containing the currently tracked initialisations for both players, indexed by player ID.
-        Initilisations include upgrades, buildings, and units which are warped-in/morphed. Once the initialisation is
-        completed, the units/upgrades are added to the tracked units/upgradeds/buildings dict.
     data : pd.DataFrame
-        A Pandas DataFrame that will contain the ingested data, with columns for replay metadata, player stats, and
-        current units. Each row will be a 10 second interval in the game.
-    player_stats_event_cache : list[PlayerStatsEvent]
-        A cache for PlayerStatsEvents, used to ensure that player stats events are processed in pairs (one for each
-        player) before generating a new row in the DataFrame.
+        A Pandas DataFrame that will contain the ingested data, with columns for replay metadata, player stats,
+        and current units. Each row will be a 10 second interval in the game.
     inverse_players : bool
         A boolean to indicate whether the players in the replay should be inverted. This is to ensure consistent race
         orderings in non-mirror matchups. The inverse_players is also used as an integer to extract the correct player
@@ -68,6 +60,11 @@ class ReplayIngester:
     ingestion_map : dict
         A mapping of event types to their corresponding ingestion methods. Any event types without a defined ingestion
         method will be skipped.
+    unit_tracker : UnitTracker
+        An instance of UnitTracker that handles all unit-related events and maintains the current state of units.
+    player_stats_tracker : PlayerStatsTracker
+        An instance of PlayerStatsTracker that handles all player stats events and maintains the current state of
+        player stats.
 
     """
 
@@ -75,14 +72,14 @@ class ReplayIngester:
         if isinstance(matchup, str):
             matchup = Matchup(matchup)
         self.matchup = matchup
-        self._reset_state()
+        self.reset_state()
         self.ingestion_map = {
-            UnitBornEvent: self.ingest_unit_born_event,
-            UnitDiedEvent: self.ingest_unit_died_event,
-            UnitTypeChangeEvent: self.ingest_unit_type_change_event,
-            PlayerStatsEvent: self.ingest_player_stats_event,
-            UnitDoneEvent: self.ingest_unit_done_event,
-            UnitInitEvent: self.ingest_unit_init_event,
+            UnitBornEvent: lambda e: self.unit_tracker.handle_unit_born(e),
+            UnitDiedEvent: lambda e: self.unit_tracker.handle_unit_died(e),
+            UnitTypeChangeEvent: lambda e: self.unit_tracker.handle_unit_type_change(e),
+            PlayerStatsEvent: lambda e: self.player_stats_tracker.handle_player_stats_event(e),
+            UnitDoneEvent: lambda e: self.unit_tracker.handle_unit_done(e),
+            UnitInitEvent: lambda e: self.unit_tracker.handle_unit_init(e),
         }
 
     @classmethod
@@ -113,15 +110,14 @@ class ReplayIngester:
         replay = load_replay(replay_path, replay)
         return cls(Matchup.from_replay(replay))
 
-    def _reset_state(self) -> None:
+    def reset_state(self) -> None:
         """Reset the internal state of the ingester."""
         self.players = []
         self.replay_metadata = {}
-        self.tracked_units = {0: {}, 1: {}}
-        self.tracked_initialisations = {0: {}, 1: {}}
         self.data = pd.DataFrame()
-        self.player_stats_event_cache = []
         self.inverse_players = False
+        self.unit_tracker = None
+        self.player_stats_tracker = None
 
     def ingest_replay(
         self,
@@ -146,20 +142,29 @@ class ReplayIngester:
         """
         replay = load_replay(replay_path, replay)
         ReplayValidator(replay, self.matchup).validate()
-        self._reset_state()
+
+        self.reset_state()
         self.init_replay_tracking(replay)
 
-        try:
-            for event in replay.events:
-                ingestion_function = self.ingestion_map.get(
-                    type(event), self.ignore_event,
-                )
-                ingestion_function(event)
-        except UnpairedPlayerStatEventError:
-            logger.warning("Unpaired player event found, ending event ingestion")
+        self.ingest_events(replay.events)
 
         logger.info("Replay finished loading")
         return self.data
+
+    def ingest_events(self, events: list[sc2reader.events.Event]) -> None:
+        """Ingest a list of events and update the internal state of the ingester."""
+        try:
+            for event in events:
+                ingestion_method = self.ingestion_map.get(
+                    type(event),
+                    lambda e: logger.debug("Event type not tracked, skipping.", extra={"event_type": type(e)}),
+                )
+                output = ingestion_method(event)
+                if output:
+                    self.generate_new_row()
+        except UnpairedPlayerStatEventError:
+            # Unpaired player events happen at the end of the replay once one player has left the game
+            logger.warning("Unpaired player event found, ending event ingestion")
 
     def init_replay_tracking(
         self, replay: sc2reader.resources.Replay,
@@ -167,6 +172,8 @@ class ReplayIngester:
         """Initialise the replay tracking by resetting the initial state and extracting metadata."""
         self.players = replay.players
         self.inverse_players = self.players[0].play_race == self.matchup.race1
+        self.unit_tracker = UnitTracker(self.players, self.inverse_players)
+        self.player_stats_tracker = PlayerStatsTracker(self.players, self.inverse_players)
 
         self.replay_metadata = {
             "filehash": replay.filehash,
@@ -175,173 +182,16 @@ class ReplayIngester:
             "player_2_race": replay.players[1 - self.inverse_players].play_race,
         }
 
-    def ingest_unit_born_event(self, event: UnitBornEvent) -> None:
-        """Ingest a UnitBornEvent and update the units dictionary."""
-        if event.control_pid == 0:  # Some events during the game setup are not assigned to player 1 or player 2
-            return
-
-        player = self.players[event.control_pid - 1]
-
-        if event.unit_type_name in TRACKED_UNIT_TYPES[player.play_race]:
-            self.tracked_units[event.control_pid - 1][
-                event.unit_id
-            ] = event.unit_type_name
-
-    def ingest_unit_died_event(self, event: UnitDiedEvent) -> None:
-        """Ingest a UnitDiedEvent and update the units dictionary.
-
-        UnitDiedEvents do not have a player id, so we attempt to remove the unit from both players' tracked units.
-        """
-        try:
-            self.tracked_units[0].pop(event.unit_id, None)
-        except KeyError:
-            try:
-                self.tracked_units[1].pop(event.unit_id, None)
-            except KeyError:
-                logger.warning("Unit not found in tracked units for both players.", extra={"unit_id": event.unit_id})
-
-    def ingest_unit_type_change_event(self, event: UnitTypeChangeEvent) -> None:
-        """Ingest a UnitTypeChangeEvent and update the units dictionary.
-
-        UnitTypeChangeEvents do not have a player id, so we attempt to update the unit type for both players' tracked
-        units.
-        """
-        not_found_unit = 0
-
-        for i, player in enumerate(self.players):
-            if event.unit_type_name in TRACKED_UNIT_TYPES[player.play_race]:
-                try:
-                    self.tracked_units[i][event.unit_id] = event.unit_type_name
-                except KeyError:
-                    not_found_unit += 1
-
-        if not_found_unit > 1:
-            logger.warning(
-                "Warning: UnitTypeChangeEvent unit not found in tracked units for both players.",
-                extra={"unit_id": event.unit_id},
-            )
-
-    def ingest_unit_init_event(self, event: UnitInitEvent) -> None:
-        """Ingest a UnitInitEvent and update the initialisations dictionary."""
-        if event.control_pid == 0:
-            return
-
-        player = self.players[event.control_pid - 1]
-
-        if event.unit_type_name in TRACKED_UNIT_TYPES[player.play_race]:
-            self.tracked_initialisations[event.control_pid - 1][
-                event.unit_id
-            ] = event.unit_type_name
-
-    def ingest_unit_done_event(self, event: UnitDoneEvent) -> None:
-        """Ingest a UnitDoneEvent and update the units dictionary."""
-        try:
-            unit_type_name = self.tracked_initialisations[0].pop(event.unit_id)
-            self.tracked_units[0][event.unit_id] = unit_type_name
-        except KeyError:
-            try:
-                unit_type_name = self.tracked_initialisations[1].pop(event.unit_id)
-                self.tracked_units[1][event.unit_id] = unit_type_name
-            except KeyError:
-                logger.debug(
-                    "Warning: UnitDoneEvent for not found in tracked units for both players.",
-                    extra={"unit_id": event.unit_id},
-                )
-
-    def ingest_player_stats_event(self, event: PlayerStatsEvent) -> dict:
-        """Ingest a PlayerStatsEvent and update the player stats data.
-
-        The PlayerStatsEvent is also the trigger for producing a new row of data, so once the two consecutive
-        PlayerStatsEvents for both player have been ingested,
-        a new row is added to the data attribute.
-        """
-        # player stats events come in pairs, one for each player every 10 seconds. We want to ingest them in pairs.
-        self.player_stats_event_cache.append(event)
-        if self.validate_player_stats_events_cache():
-            self.player_stats_data = {
-                "seconds": self.player_stats_event_cache[0].second,
-            }
-
-            for field in EVENT_DATA_FIELDS:
-                self.player_stats_data[f"player_1_{field}"] = getattr(
-                    self.player_stats_event_cache[self.inverse_players], field,
-                )
-                self.player_stats_data[f"player_2_{field}"] = getattr(
-                    self.player_stats_event_cache[1 - self.inverse_players], field,
-                )
-
-            self.generate_new_row()
-        else:
-            pass
-
-    def ignore_event(self, event: sc2reader.events.Event) -> None:
-        """Ignore an event by logging a debug message.
-
-        This method is used for events that are not tracked or processed by the ingester.
-        """
-        logger.debug("Event type not tracked, skipping.", extra={"event_type": type(event)})
-
-    def validate_player_stats_events_cache(self) -> bool:
-        """Validate whether the current PlayerStatsEvents are ready to be processed.
-
-        It checks that there are two events in the cache, one for each player, and that they are from the same
-        timestamp in game.
-        """
-        if len(self.player_stats_event_cache) > 2:
-            msg = "Error ingesting player stats events: more than two player stats events in the cache."
-            raise ValueError(msg)
-        if len(self.player_stats_event_cache) == 2:
-            if (self.player_stats_event_cache[0].player != self.players[0]) and (
-                self.player_stats_event_cache[1].player != self.players[1]
-            ):
-                raise UnpairedPlayerStatEventError
-            if (
-                self.player_stats_event_cache[0].second
-                != self.player_stats_event_cache[1].second
-            ):
-                msg = "Error ingesting player stats events: events for both players should be at the same second."
-                raise ValueError(msg)
-            return True
-        return False
-
     def generate_new_row(self) -> None:
-        """Generate a new row in the Data, combining replay metadata, player stats data, and current units.
+        """Generate a new row in the Data, combining replay metadata, player stats data, and tracked units.
 
         The new row is concatened onto the existing DataFrame in the `data` attribute. Once the row is generated, the
-        player stats event cache and player stats data are reset for the next pair of PlayerStatsEvents.
+        player_stats_tracker is reset for the next pair of PlayerStatsEvents.
         """
         new_row = {
             **self.replay_metadata,
-            **self.player_stats_data,
-            **self.get_current_units(),
+            **self.player_stats_tracker.player_stats_data,
+            **self.unit_tracker.get_current_units(),
         }
         self.data = pd.concat([self.data, pd.DataFrame([new_row])], ignore_index=True)
-        self.player_stats_event_cache = (
-            []
-        )  # Reset the cache for the next pair of PlayerStatsEvents
-        self.player_stats_data = (
-            {}
-        )  # Reset the player stats data for the next pair of PlayerStatsEvents
-
-    def get_current_units(self) -> Counter:
-        """Get the current units for both players based on their tracked units, returned as a Counter object."""
-        player_1_units = Counter(self.tracked_units[self.inverse_players].values())
-        player_2_units = Counter(self.tracked_units[1 - self.inverse_players].values())
-
-        player_1_units = {
-            f"player_1_{x}": player_1_units.get(x, 0)
-            for x in TRACKED_UNIT_TYPES[self.players[self.inverse_players].play_race]
-        }
-        player_2_units = {
-            f"player_2_{x}": player_2_units.get(x, 0)
-            for x in TRACKED_UNIT_TYPES[
-                self.players[1 - self.inverse_players].play_race
-            ]
-        }
-
-        combined_units = {**player_1_units, **player_2_units}
-
-        if any(count < 0 for count in combined_units.values()):
-            logger.warning("Warning: unit count is less than 0.")
-
-        return combined_units
+        self.player_stats_tracker.reset_state()
