@@ -25,9 +25,8 @@ PLAYER_STATS_FIELDS = [
 class PlayerStatsTracker:
     """Track player stats events and generate new rows of data."""
 
-    def __init__(self, players: list[sc2reader.objects.Participant], inverse_players: bool) -> None:
+    def __init__(self, players: list[sc2reader.objects.Participant]) -> None:
         self.players = players
-        self.inverse_players = inverse_players
         self.player_stats_event_cache = []
         self.player_stats_data = {}
 
@@ -44,10 +43,10 @@ class PlayerStatsTracker:
 
             for field in PLAYER_STATS_FIELDS:
                 self.player_stats_data[f"player_1_{field}"] = getattr(
-                    self.player_stats_event_cache[self.inverse_players], field,
+                    self.player_stats_event_cache[0], field,
                 )
                 self.player_stats_data[f"player_2_{field}"] = getattr(
-                    self.player_stats_event_cache[1 - self.inverse_players], field,
+                    self.player_stats_event_cache[1], field,
                 )
 
             return True

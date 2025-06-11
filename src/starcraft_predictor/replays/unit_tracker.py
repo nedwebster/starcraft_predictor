@@ -85,24 +85,19 @@ class UnitTracker:
     tracked_initialisations : Dict[int, Dict[int, str]]
         Dictionary containing the currently tracked initialisations for both players, indexed by player ID.
         Format: {player_id: {unit_id: unit_type_name, ...}}
-    inverse_players : bool
-        Boolean indicating whether the players in the replay should be inverted for consistent race ordering.
 
     """
 
-    def __init__(self, players: list[sc2reader.objects.Participant], inverse_players: bool) -> None:
+    def __init__(self, players: list[sc2reader.objects.Participant]) -> None:
         """Initialize the UnitTracker.
 
         Parameters
         ----------
         players : List[sc2reader.objects.Participant]
             List of players in the replay.
-        inverse_players : bool
-            Boolean indicating whether the players in the replay should be inverted.
 
         """
         self.players = players
-        self.inverse_players = inverse_players
         self.tracked_units = {0: {}, 1: {}}
         self.tracked_initialisations = {0: {}, 1: {}}
 
@@ -222,17 +217,17 @@ class UnitTracker:
             Format: {f"player_{i}_{unit_type}": count, ...}
 
         """
-        player_1_units = Counter(self.tracked_units[self.inverse_players].values())
-        player_2_units = Counter(self.tracked_units[1 - self.inverse_players].values())
+        player_1_units = Counter(self.tracked_units[0].values())
+        player_2_units = Counter(self.tracked_units[1].values())
 
         player_1_units = {
             f"player_1_{x}": player_1_units.get(x, 0)
-            for x in TRACKED_UNIT_TYPES[self.players[self.inverse_players].play_race]
+            for x in TRACKED_UNIT_TYPES[self.players[0].play_race]
         }
         player_2_units = {
             f"player_2_{x}": player_2_units.get(x, 0)
             for x in TRACKED_UNIT_TYPES[
-                self.players[1 - self.inverse_players].play_race
+                self.players[1].play_race
             ]
         }
 

@@ -172,14 +172,15 @@ class ReplayIngester:
         """Initialise the replay tracking by resetting the initial state and extracting metadata."""
         self.players = replay.players
         self.inverse_players = self.players[0].play_race == self.matchup.race1
-        self.unit_tracker = UnitTracker(self.players, self.inverse_players)
-        self.player_stats_tracker = PlayerStatsTracker(self.players, self.inverse_players)
+        self.unit_tracker = UnitTracker(self.players)
+        self.player_stats_tracker = PlayerStatsTracker(self.players)
 
         self.replay_metadata = {
             "filehash": replay.filehash,
-            "winner": abs(replay.winner.players[0].pid - 1 - int(self.inverse_players)),
-            "player_1_race": replay.players[self.inverse_players].play_race,
-            "player_2_race": replay.players[1 - self.inverse_players].play_race,
+            # "winner": abs(replay.winner.players[0].pid - 1 - int(self.inverse_players)),
+            "winner": replay.winner.players[0].pid - 1,
+            "player_1_race": replay.players[0].play_race,
+            "player_2_race": replay.players[1].play_race,
         }
 
     def generate_new_row(self) -> None:
@@ -193,5 +194,22 @@ class ReplayIngester:
             **self.player_stats_tracker.player_stats_data,
             **self.unit_tracker.get_current_units(),
         }
+
+        if self.inverse_players:
+            new_row = self.inverse_data(new_row)
+
         self.data = pd.concat([self.data, pd.DataFrame([new_row])], ignore_index=True)
         self.player_stats_tracker.reset_state()
+
+    def inverse_data(self, data: dict) -> dict:
+        """Inverse the data for a given row."""
+        inversed_data = {}
+        for key, value in data.items():
+            if key.startswith("player_1_"):
+                inversed_data[key.replace("player_1_", "player_2_")] = value
+            elif key.startswith("player_2_"):
+                inversed_data[key.replace("player_2_", "player_1_")] = value
+            else:
+                inversed_data[key] = value
+        inversed_data["winner"] = 1 - data["winner"]
+        return inversed_data
