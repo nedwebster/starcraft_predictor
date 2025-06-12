@@ -50,9 +50,11 @@ TRACKED_UNIT_TYPES = {
         "Widow Mine",
         "Thor",
         "Viking",
+        "VikingFighter",
+        "VikingAssault",
         "Medivac",
         "Liberator",
-        "Ravem",
+        "Raven",
         "Banshee",
         "Battlecruiser",
     ],
@@ -228,7 +230,8 @@ class UnitTracker:
     def handle_unit_died(self, event: UnitDiedEvent) -> None:
         """Handle a UnitDiedEvent and update the units dictionary.
 
-        UnitDiedEvents do not have a player id, so we attempt to remove the unit from both players' tracked units.
+        UnitDiedEvents do not have a player id, so we attempt to remove the unit from both players' tracked/initialised
+        units.
 
         Parameters
         ----------
@@ -236,13 +239,19 @@ class UnitTracker:
             The UnitDiedEvent to process.
 
         """
-        try:
-            self.tracked_units[0].pop(event.unit_id, None)
-        except KeyError:
-            try:
-                self.tracked_units[1].pop(event.unit_id, None)
-            except KeyError:
-                logger.warning("Unit not found in tracked units for both players.", extra={"unit_id": event.unit_id})
+        unit_not_found_count = 0
+        for player in self.players:
+            if event.unit.name in TRACKED_UNIT_TYPES[player.play_race]:
+                popped_unit = self.tracked_units[player.pid - 1].pop(event.unit_id, None)
+                popped_initialisation = self.tracked_initialisations[player.pid - 1].pop(event.unit_id, None)
+                if popped_unit is None and popped_initialisation is None:
+                    unit_not_found_count += 1
+
+        if unit_not_found_count > 1:
+            logger.warning(
+                "Unit not found in tracked units for both players.",
+                extra={"unit_id": event.unit_id, "unit_name": event.unit.name},
+            )
 
     def handle_unit_type_change(self, event: UnitTypeChangeEvent) -> None:
         """Handle a UnitTypeChangeEvent and update the units dictionary.
@@ -309,7 +318,7 @@ class UnitTracker:
             except KeyError:
                 logger.debug(
                     "Warning: UnitDoneEvent for not found in tracked units for both players.",
-                    extra={"unit_id": event.unit_id},
+                    extra={"unit_id": event.unit_id, "unit_name": event.unit.name},
                 )
 
     def handle_upgrade_complete(self, event: UpgradeCompleteEvent) -> None:
