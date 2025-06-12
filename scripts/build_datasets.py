@@ -10,12 +10,14 @@ based on the matchup type.
 """
 
 import glob
-from starcraft_predictor.replays.replay_ingester import ReplayIngester
-from starcraft_predictor.replays import Matchup
-import sc2reader
-import pandas as pd
 
-REPLAY_PATH = "/Users/nedwebster/Documents/python_projects/personal_projects/starcraft_predictor/data/replays/HSC26/Gr. D"
+import pandas as pd
+import sc2reader
+
+from starcraft_predictor.replays.matchup import Matchup
+from starcraft_predictor.replays.replay_ingester import ReplayIngester
+
+REPLAY_PATH = "/Users/nedwebster/Documents/python_projects/personal_projects/starcraft_predictor/data/replays/"
 
 MATCHUPS = [
     "Terran vs Zerg",
@@ -35,13 +37,17 @@ def ingest_replays(replay_path: str) -> None:
     replay_paths = glob.glob(replay_path + "/**/*SC2Replay", recursive=True)
     for i, replay_path in enumerate(replay_paths):
         print(f"{i+1}/{len(replay_paths)}", end="\r")
-        replay = sc2reader.load_replay(replay_path)
-        matchup = Matchup.from_replay(replay)
-        ingester = INGESTERS[matchup.value]
-        data = ingester.ingest_replay(replay_path)
-        DATAFRAMES[matchup.value] = pd.concat(
-            [DATAFRAMES[matchup.value], data], ignore_index=True
-        )
+        try:
+            replay = sc2reader.load_replay(replay_path)
+            matchup = Matchup.from_replay(replay)
+            ingester = INGESTERS[matchup.value]
+            data = ingester.ingest_replay(replay_path)
+            DATAFRAMES[matchup.value] = pd.concat(
+                [DATAFRAMES[matchup.value], data], ignore_index=True
+            )
+        except Exception as e:
+            print(f"Error ingesting replay {replay_path}: {e}")
+            continue
 
 
 def validate_data(matchup: str, data: pd.DataFrame) -> None:

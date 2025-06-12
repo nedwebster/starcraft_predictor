@@ -9,6 +9,7 @@ from sc2reader.events.tracker import (
     UnitDoneEvent,
     UnitInitEvent,
     UnitTypeChangeEvent,
+    UpgradeCompleteEvent,
 )
 
 from starcraft_predictor.errors import UnpairedPlayerStatEventError
@@ -80,6 +81,7 @@ class ReplayIngester:
             PlayerStatsEvent: lambda e: self.player_stats_tracker.handle_player_stats_event(e),
             UnitDoneEvent: lambda e: self.unit_tracker.handle_unit_done(e),
             UnitInitEvent: lambda e: self.unit_tracker.handle_unit_init(e),
+            UpgradeCompleteEvent: lambda e: self.unit_tracker.handle_upgrade_complete(e),
         }
 
     @classmethod
@@ -164,21 +166,20 @@ class ReplayIngester:
                     self.generate_new_row()
         except UnpairedPlayerStatEventError:
             # Unpaired player events happen at the end of the replay once one player has left the game
-            logger.warning("Unpaired player event found, ending event ingestion")
+            logger.debug("Unpaired player event found, ending event ingestion")
 
     def init_replay_tracking(
         self, replay: sc2reader.resources.Replay,
     ) -> None:
         """Initialise the replay tracking by resetting the initial state and extracting metadata."""
         self.players = replay.players
-        self.inverse_players = self.players[0].play_race == self.matchup.race1
+        self.inverse_players = self.players[0].play_race != self.matchup.race1
         self.unit_tracker = UnitTracker(self.players)
         self.player_stats_tracker = PlayerStatsTracker(self.players)
 
         self.replay_metadata = {
             "filehash": replay.filehash,
-            # "winner": abs(replay.winner.players[0].pid - 1 - int(self.inverse_players)),
-            "winner": replay.winner.players[0].pid - 1,
+            "winner": replay.winner.players[0].pid,
             "player_1_race": replay.players[0].play_race,
             "player_2_race": replay.players[1].play_race,
         }
@@ -196,13 +197,13 @@ class ReplayIngester:
         }
 
         if self.inverse_players:
-            new_row = self.inverse_data(new_row)
+            new_row = self.invert_data(new_row)
 
         self.data = pd.concat([self.data, pd.DataFrame([new_row])], ignore_index=True)
         self.player_stats_tracker.reset_state()
 
-    def inverse_data(self, data: dict) -> dict:
-        """Inverse the data for a given row."""
+    def invert_data(self, data: dict) -> dict:
+        """Invert the data for a given row by swapping the player_1 and player_2 columns and inverting the winner."""
         inversed_data = {}
         for key, value in data.items():
             if key.startswith("player_1_"):
@@ -211,5 +212,5 @@ class ReplayIngester:
                 inversed_data[key.replace("player_2_", "player_1_")] = value
             else:
                 inversed_data[key] = value
-        inversed_data["winner"] = 1 - data["winner"]
+        inversed_data["winner"] = 3 - data["winner"]
         return inversed_data
