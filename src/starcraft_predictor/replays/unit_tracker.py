@@ -178,6 +178,27 @@ class UnitTracker:
     This class handles all unit-related events and maintains the current state of units for both players.
     It tracks units that are born, die, change type, or are initialized and completed.
 
+    A note on event.unit_type_name and event.unit.name:
+    - event.unit_type_name is the name of the unit type produced by that event. Whereas event.unit.name is
+      current type in the unit object. Because sc2reader.load_replay() ingestst ALL events before we start
+      processing them, event.unit.name is always the type of the unit at the end of the game, even if we are looking at
+      the UnitBornEvent which created it. For example, below is a process flow of a unit's life from a fully loaded
+      replay:
+
+        1. UnitBornEvent
+            - The event.unit_type_name is "Zergling", since the event produced a zergling.
+            - The event.unit.name is "Baneling" since, at some point later in the game, this unit morphed to a baneling.
+        2. UnitTypeChangeEvent
+            - The event.unit_type_name is "Baneling" since the event produced a baneling.
+            - The event.unit.name is "Baneling" since, as stated above, the unit object has been updated to a baneling.
+              This is the event which transformed unit.name from "Zergling" to "Baneling" during the load of the replay.
+        3. UnitDiedEvent
+            - The event has no property event.unit_type_name, since it does not produce a unit.
+            - The event.unit.name is "Baneling", and we can use this type as it is the last type of the unit, since it
+              is dead.
+
+    This has consequences for which attribute we use when tracking units from various events.
+
     Attributes
     ----------
     players : List[sc2reader.objects.Participant]
@@ -217,21 +238,19 @@ class UnitTracker:
             The UnitBornEvent to process.
 
         """
-        if event.control_pid == 0:  # Some events during the game setup are not assigned to player 1 or player 2
+        player = event.unit.owner
+        if player is None:
             return
 
-        player = self.players[event.control_pid - 1]
-
         if event.unit_type_name in TRACKED_UNIT_TYPES[player.play_race]:
-            self.tracked_units[event.control_pid - 1][
+            self.tracked_units[player.pid - 1][
                 event.unit_id
             ] = event.unit_type_name
 
     def handle_unit_died(self, event: UnitDiedEvent) -> None:
         """Handle a UnitDiedEvent and update the units dictionary.
 
-        UnitDiedEvents do not have a player id, so we attempt to remove the unit from both players' tracked/initialised
-        units.
+        UnitDiedEvents can remove units that are either tracked or units that are being initialised.
 
         Parameters
         ----------
@@ -239,25 +258,23 @@ class UnitTracker:
             The UnitDiedEvent to process.
 
         """
-        unit_not_found_count = 0
-        for player in self.players:
-            if event.unit.name in TRACKED_UNIT_TYPES[player.play_race]:
-                popped_unit = self.tracked_units[player.pid - 1].pop(event.unit_id, None)
-                popped_initialisation = self.tracked_initialisations[player.pid - 1].pop(event.unit_id, None)
-                if popped_unit is None and popped_initialisation is None:
-                    unit_not_found_count += 1
+        player = event.unit.owner
+        if player is None:
+            return
 
-        if unit_not_found_count > 1:
-            logger.warning(
-                "Unit not found in tracked units for both players.",
-                extra={"unit_id": event.unit_id, "unit_name": event.unit.name},
-            )
+        if event.unit.name in TRACKED_UNIT_TYPES[player.play_race]:
+            removed_unit = self.tracked_units[player.pid - 1].pop(event.unit_id, None)
+            removed_initialisation = self.tracked_initialisations[player.pid - 1].pop(event.unit_id, None)
+            if not any([removed_unit, removed_initialisation]):
+                logger.warning(
+                    "Unit not found in tracked units for both players.",
+                    extra={"unit_id": event.unit_id, "unit_name": event.unit.name},
+                )
 
     def handle_unit_type_change(self, event: UnitTypeChangeEvent) -> None:
         """Handle a UnitTypeChangeEvent and update the units dictionary.
 
-        UnitTypeChangeEvents do not have a player id, so we attempt to update the unit type for both players' tracked
-        units. UnitTypeChangeEvents modify the unit_type_name for an already existing unit_id.
+        UnitTypeChangeEvents modify the unit_type_name for an already existing unit_id.
 
         Parameters
         ----------
@@ -265,17 +282,15 @@ class UnitTracker:
             The UnitTypeChangeEvent to process.
 
         """
-        not_found_unit = 0
+        player = event.unit.owner
+        if player is None:
+            return
 
-        for i, player in enumerate(self.players):
-            if event.unit_type_name in TRACKED_UNIT_TYPES[player.play_race]:
-                try:
-                    self.tracked_units[i][event.unit_id] = event.unit_type_name
-                except KeyError:
-                    not_found_unit += 1
-
-        if not_found_unit > 1:
-            logger.warning(
+        if event.unit_type_name in TRACKED_UNIT_TYPES[player.play_race]:
+            try:
+                self.tracked_units[player.pid - 1][event.unit_id] = event.unit_type_name
+            except KeyError:
+                logger.warning(
                 "Warning: UnitTypeChangeEvent unit not found in tracked units for both players.",
                 extra={"unit_id": event.unit_id},
             )
@@ -283,24 +298,27 @@ class UnitTracker:
     def handle_unit_init(self, event: UnitInitEvent) -> None:
         """Handle a UnitInitEvent and update the initialisations dictionary.
 
+        UnitInitEvents are for units which are not born, but are initialized, eg: warped in units.
+
         Parameters
         ----------
         event : UnitInitEvent
             The UnitInitEvent to process.
 
         """
-        if event.control_pid == 0:
+        player = event.unit.owner
+        if player is None:
             return
 
-        player = self.players[event.control_pid - 1]
-
         if event.unit_type_name in TRACKED_UNIT_TYPES[player.play_race]:
-            self.tracked_initialisations[event.control_pid - 1][
+            self.tracked_initialisations[player.pid - 1][
                 event.unit_id
             ] = event.unit_type_name
 
     def handle_unit_done(self, event: UnitDoneEvent) -> None:
         """Handle a UnitDoneEvent and update the units dictionary.
+
+        UnitDoneEvents are for finished initialisations, eg: finished warping in a unit.
 
         Parameters
         ----------
@@ -308,15 +326,16 @@ class UnitTracker:
             The UnitDoneEvent to process.
 
         """
-        try:
-            unit_type_name = self.tracked_initialisations[0].pop(event.unit_id)
-            self.tracked_units[0][event.unit_id] = unit_type_name
-        except KeyError:
+        player = event.unit.owner
+        if player is None:
+            return
+
+        if event.unit.name in TRACKED_UNIT_TYPES[player.play_race]:
             try:
-                unit_type_name = self.tracked_initialisations[1].pop(event.unit_id)
-                self.tracked_units[1][event.unit_id] = unit_type_name
+                unit_type_name = self.tracked_initialisations[player.pid - 1].pop(event.unit_id)
+                self.tracked_units[player.pid - 1][event.unit_id] = unit_type_name
             except KeyError:
-                logger.debug(
+                logger.warning(
                     "Warning: UnitDoneEvent for not found in tracked units for both players.",
                     extra={"unit_id": event.unit_id, "unit_name": event.unit.name},
                 )
@@ -330,13 +349,12 @@ class UnitTracker:
             The UpgradeCompleteEvent to process.
 
         """
-        if event.pid == 0:
+        player = event.player
+        if player is None:
             return
 
-        player = self.players[event.pid - 1]
-
         if event.upgrade_type_name in TRACKED_UPGRADE_TYPES[player.play_race]:
-            self.tracked_upgrades[event.pid - 1][
+            self.tracked_upgrades[player.pid - 1][
                 event.upgrade_type_name
             ] = 1
 

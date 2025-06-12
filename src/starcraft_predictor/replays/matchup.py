@@ -6,8 +6,8 @@ import sc2reader
 class Matchup(Enum):
     """Possible combinations for matchups in StarCraft II.
 
-    Note: These are NOT permutations. TvZ and ZvT are considered the same matchup, and the replay process will reverse
-    the players in ZvT to match the TvZ Matchup.
+    Note: These matchups are treated as combinations, not permutations. TvZ and ZvT are considered the same matchup, and
+    the replay ingestion process will reverse the players in ZvT to match the TvZ Matchup.
 
     """
 
