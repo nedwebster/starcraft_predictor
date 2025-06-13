@@ -21,20 +21,20 @@ TRACKED_UNIT_TYPES = {
         "Stalker",
         "Sentry",
         "Adept",
-        "High Templar",
-        "Dark Templar",
+        "HighTemplar",
+        "DarkTemplar",
         "Immortal",
         "Colossus",
         "Disruptor",
         "Archon",
         "Observer",
-        "Warp Prism",
+        "WarpPrism",
         "Phoenix",
-        "Void Ray",
+        "VoidRay",
         "Oracle",
         "Carrier",
         "Tempest",
-        "Mothership Core",
+        "Mothership",
     ],
     "Terran": [
         "SCV",
@@ -44,14 +44,12 @@ TRACKED_UNIT_TYPES = {
         "Reaper",
         "Ghost",
         "Hellion",
-        "Hellbat",
-        "Siege Tank",
+        "HellionTank",
+        "SiegeTank",
         "Cyclone",
-        "Widow Mine",
+        "WidowMine",
         "Thor",
-        "Viking",
         "VikingFighter",
-        "VikingAssault",
         "Medivac",
         "Liberator",
         "Raven",
@@ -66,15 +64,15 @@ TRACKED_UNIT_TYPES = {
         "Roach",
         "Ravager",
         "Hydralisk",
-        "Lurker",
+        "LurkerMP",
         "Infestor",
-        "Swarm Host",
-        "Ultralish",
+        "SwarmHostMP",
+        "Ultralisk",
         "Overlord",
         "Overseer",
         "Mutalisk",
         "Corruptor",
-        "Brood Lord",
+        "BroodLord",
         "Viper",
     ],
 }
@@ -178,11 +176,16 @@ class UnitTracker:
     This class handles all unit-related events and maintains the current state of units for both players.
     It tracks units that are born, die, change type, or are initialized and completed.
 
+    Units are ingested in the tracker by name referencing the TRACKED_UNIT_TYPES dictionary, and are stored using the
+    unique_id for the unit. This allows us to only ingest units we are interested in tracking. Units are removed from
+    the tracker by unique_id only, not name. This allows for the tracking of units which switch states, eg tanks sieging
+    and unseiging, without having to track both 'states' as separate units.
+
     A note on event.unit_type_name and event.unit.name:
-    - event.unit_type_name is the name of the unit type produced by that event. Whereas event.unit.name is
-      current type in the unit object. Because sc2reader.load_replay() ingestst ALL events before we start
-      processing them, event.unit.name is always the type of the unit at the end of the game, even if we are looking at
-      the UnitBornEvent which created it. For example, below is a process flow of a unit's life from a fully loaded
+    - event.unit_type_name is the name of the unit type produced by that event. The event.unit.name is the
+      current type in the unit object. Because sc2reader.load_replay() ingests all events before we start
+      processing them, event.unit.name is always the unit_type of the unit at the end of the game, even if we are looking
+      at the UnitBornEvent which created it. For example, below is a process flow of a unit's life from a fully loaded
       replay:
 
         1. UnitBornEvent
@@ -262,14 +265,13 @@ class UnitTracker:
         if player is None:
             return
 
-        if event.unit.name in TRACKED_UNIT_TYPES[player.play_race]:
-            removed_unit = self.tracked_units[player.pid - 1].pop(event.unit_id, None)
-            removed_initialisation = self.tracked_initialisations[player.pid - 1].pop(event.unit_id, None)
-            if not any([removed_unit, removed_initialisation]):
-                logger.warning(
-                    "Unit not found in tracked units for both players.",
-                    extra={"unit_id": event.unit_id, "unit_name": event.unit.name},
-                )
+        removed_unit = self.tracked_units[player.pid - 1].pop(event.unit_id, None)
+        removed_initialisation = self.tracked_initialisations[player.pid - 1].pop(event.unit_id, None)
+        if not any([removed_unit, removed_initialisation]):
+            logger.debug(
+                "Unit not found in tracked units for both players.",
+                extra={"unit_id": event.unit_id, "unit_name": event.unit.name},
+            )
 
     def handle_unit_type_change(self, event: UnitTypeChangeEvent) -> None:
         """Handle a UnitTypeChangeEvent and update the units dictionary.
