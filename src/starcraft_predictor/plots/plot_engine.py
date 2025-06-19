@@ -268,4 +268,5 @@ class PlotEngine:
         ax.set_ylabel("Win Probability\n", fontsize=20, color="#62afd4")
         ax.set_xlabel("\nMinutes", fontsize=20, color="#62afd4")
 
+        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
         return fig
