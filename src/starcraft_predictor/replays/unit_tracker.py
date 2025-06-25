@@ -106,7 +106,7 @@ TRACKED_UPGRADE_TYPES = {
         "Stimpack",
         "ShieldWall",
         "PunisherGrenades",
-        "InterferenceMatrix"
+        "InterferenceMatrix",
         "TerranInfantryWeaponsLevel1",
         "TerranInfantryWeaponsLevel2",
         "TerranInfantryWeaponsLevel3",

@@ -1,13 +1,13 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import tensorflow as tf
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-from tensorflow.keras.layers import LSTM, Dense, Input, TimeDistributed
-from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import Adam
+
+from keras.regularizers import l2
+import matplotlib.pyplot as plt
+from tensorflow.keras.preprocessing import sequence  # type: ignore
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau  # type: ignore
+from tensorflow.keras.layers import LSTM, Dense, TimeDistributed  # type: ignore
+from tensorflow.keras.models import Model, Sequential, load_model  # type: ignore
+from tensorflow.keras.optimizers import Adam  # type: ignore
 
 
 class Sc2LSTM:
@@ -15,192 +15,105 @@ class Sc2LSTM:
 
     def __init__(
         self,
-        lstm_units: int = 64,
-        dropout_rate: float = 0.3,
-        learning_rate: float = 0.001,
+        features: list[str],
+        target: str,
+        unique_id: str,
+        timestamp: str,
+        lstm_params: dict | None = None,
+        optimiser_params: dict | None = None,
     ):
-        """Initialize the LSTM model.
+        self.features = features
+        self.target = target
+        self.unique_id = unique_id
+        self.timestamp = timestamp
+        self.lstm_params = self.get_lstm_params(lstm_params)
+        self.optimiser_params = optimiser_params or {
+            "optimizer": Adam(learning_rate=0.01),
+            "loss": "binary_crossentropy",
+            "metrics": ["AUC"],
+        }
 
-        Args:
-            lstm_units: Number of LSTM units
-            dropout_rate: Dropout rate for regularization
-            learning_rate: Learning rate for optimization
-
-        """
-        self.lstm_units = lstm_units
-        self.dropout_rate = dropout_rate
-        self.learning_rate = learning_rate
-        self.model = None
-        self.scaler = StandardScaler()
+        self.model = self.init_model()
+        self.scaler = None
         self.history = None
 
-    def build_model(self, sequence_length: int, n_features: int = 2) -> Model:
-        """Build the LSTM model architecture.
+    @staticmethod
+    def get_lstm_params(lstm_params: dict | None = None) -> dict:
+        """Set the LSTM parameters, ensuring that the return_sequences is True."""
+        lstm_params = lstm_params or {
+            "units": 64,
+            "dropout": 0.01,
+            "kernel_regularizer": l2(0.01),
+            "recurrent_regularizer": l2(0.01),
+            "bias_regularizer": l2(0.01),
+        }
+        lstm_params["return_sequences"] = True
+        return lstm_params
 
-        Args:
-            sequence_length: Length of input sequences (minutes in game)
-            n_features: Number of features (possession_pct, tackles)
+    def get_feature_array(self, data: pd.DataFrame) -> np.ndarray:
+        """Get the feature array for the LSTM model."""
+        return data[self.features].values.reshape(1, data.shape[0], len(self.features))
 
-        Returns:
-            Compiled Keras model
+    def get_target_array(self, data: pd.DataFrame) -> np.ndarray:
+        """Get the target array for the LSTM model."""
+        return data[[self.target]].values.reshape(1, data.shape[0], 1)
 
-        """
-        # Input layer
-        inputs = Input(shape=(sequence_length, n_features), name="match_features")
+    def init_model(self) -> Model:
+        """Build the LSTM model architecture."""
+        lstm_layer = LSTM(**self.lstm_params)
+        output_layer = TimeDistributed(Dense(1, activation="sigmoid", name="win_probability"))
 
-        # LSTM layers with return_sequences=True for many-to-many prediction
-        lstm_out = LSTM(
-            units=self.lstm_units,
-            return_sequences=True,
-            dropout=self.dropout_rate,
-            recurrent_dropout=self.dropout_rate,
-            name="lstm_layer",
-        )(inputs)
-
-        # Additional LSTM layer for more complex patterns
-        lstm_out = LSTM(
-            units=self.lstm_units // 2,
-            return_sequences=True,
-            dropout=self.dropout_rate,
-            recurrent_dropout=self.dropout_rate,
-            name="lstm_layer_2",
-        )(lstm_out)
-
-        # TimeDistributed Dense layer for predictions at each timestamp
-        predictions = TimeDistributed(
-            Dense(1, activation="sigmoid", name="win_probability"),
-            name="time_distributed_output",
-        )(lstm_out)
-
-        # Create and compile model
-        model = Model(inputs=inputs, outputs=predictions, name="sports_match_lstm")
-
-        model.compile(
-            optimizer=Adam(learning_rate=self.learning_rate),
-            loss="binary_crossentropy",
-            metrics=["accuracy", "precision", "recall"],
-        )
+        model = Sequential(layers=[lstm_layer, output_layer])
+        model.compile(**self.optimiser_params)
 
         self.model = model
-        return model
 
-    def prepare_data(
-        self,
-        df: pd.DataFrame,
-        feature_columns: list[str],
-        target_column: str,
-        id_column: str = "filehash",
-        test_size: float = 0.2,
-        random_state: int = 42,
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Prepare and preprocess the training data from a pandas DataFrame.
+    def prepare_training_data(self, data: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+        """Prepare the training data for the LSTM model."""
+        data = data.copy()
+        data.sort_values(by=[self.unique_id, self.timestamp], inplace=True)
+        groups = data.groupby(self.unique_id)
+        n_examples = data[self.unique_id].nunique()
+        n_timesteps = groups[self.target].count().max()
 
-        Args:
-            df: DataFrame containing match data with id column to separate matches
-            feature_columns: List of column names to use as features
-            target_column: Name of the target column (match winner)
-            id_column: Name of the column that identifies different matches
-            test_size: Proportion of data for testing
-            random_state: Random seed for reproducibility
+        X_sequences = []
+        y_sequences = []
 
-        Returns:
-            X_train, X_test, y_train, y_test
+        for group in groups:
+            X_data = group[1][self.features].values
+            y_data = [group[1][self.target].max()] * n_timesteps
+            X_sequences.append(X_data)
+            y_sequences.append(y_data)
+        X_sequences = sequence.pad_sequences(X_sequences, dtype=float)
+        y_sequences = np.array(y_sequences).reshape(n_examples, n_timesteps, 1)
 
-        """
-        # Group data by match id
-        match_groups = df.groupby(id_column)
-        
-        # Get unique match ids and their winners
-        match_ids = df[id_column].unique()
-        match_winners = []
-        match_data = []
-        
-        # Process each match
-        for match_id in match_ids:
-            match_df = match_groups.get_group(match_id)
-            
-            # Extract features for this match
-            features = match_df[feature_columns].values
-            match_data.append(features)
-            
-            # Get the winner for this match (should be consistent across all rows)
-            winner = match_df[target_column].iloc[0]
-            match_winners.append(winner)
-        
-        # Find the maximum sequence length
-        max_length = max(len(match) for match in match_data)
-        n_features = len(feature_columns)
-        n_matches = len(match_data)
-
-        # Initialize arrays
-        X = np.zeros((n_matches, max_length, n_features))
-        y = np.zeros((n_matches, max_length, 1))
-
-        # Process each match
-        for i, (match, winner) in enumerate(
-            zip(match_data, match_winners, strict=False)
-        ):
-            match_length = len(match)
-
-            # Pad sequences to max_length (pad with zeros at the end)
-            X[i, :match_length, :] = match
-
-            # Create target sequence - winner probability at each timestamp
-            # The true winner is known throughout the game
-            y[i, :match_length, 0] = winner
-
-        # Normalize features
-        # Reshape for scaling
-        X_reshaped = X.reshape(-1, n_features)
-        X_scaled = self.scaler.fit_transform(X_reshaped)
-        X = X_scaled.reshape(n_matches, max_length, n_features)
-
-        # Split data
-        X_train, X_test, y_train, y_test = train_test_split(
-            X,
-            y,
-            test_size=test_size,
-            random_state=random_state,
-            stratify=match_winners,
-        )
-
-        return X_train, X_test, y_train, y_test
+        return X_sequences, y_sequences
 
     def train(
         self,
-        X_train: np.ndarray,
-        y_train: np.ndarray,
-        X_val: np.ndarray | None = None,
-        y_val: np.ndarray | None = None,
+        train_data: pd.DataFrame,
+        validation_data: pd.DataFrame | None = None,
         epochs: int = 100,
         batch_size: int = 32,
         verbose: int = 1,
     ) -> None:
-        """Train the LSTM model.
+        """Train the LSTM model."""
+        self.init_model()
 
-        Args:
-            X_train: Training features
-            y_train: Training targets
-            X_val: Validation features (optional)
-            y_val: Validation targets (optional)
-            epochs: Number of training epochs
-            batch_size: Batch size for training
-            verbose: Verbosity level
+        train_X, train_y = self.prepare_training_data(train_data)
 
-        """
-        if self.model is None:
-            raise ValueError("Model not built. Call build_model() first.")
+        if validation_data is not None:
+            validation_arrays = self.prepare_training_data(validation_data)
 
-        # Callbacks
         callbacks = [
             EarlyStopping(
-                monitor="val_loss" if X_val is not None else "loss",
+                monitor="val_loss" if validation_data is not None else "loss",
                 patience=15,
                 restore_best_weights=True,
                 verbose=1,
             ),
             ReduceLROnPlateau(
-                monitor="val_loss" if X_val is not None else "loss",
+                monitor="val_loss" if validation_data is not None else "loss",
                 factor=0.5,
                 patience=10,
                 min_lr=1e-7,
@@ -208,23 +121,17 @@ class Sc2LSTM:
             ),
         ]
 
-        # Prepare validation data
-        validation_data = None
-        if X_val is not None and y_val is not None:
-            validation_data = (X_val, y_val)
-
-        # Train model
         self.history = self.model.fit(
-            X_train,
-            y_train,
-            validation_data=validation_data,
+            train_X,
+            train_y,
+            validation_data=validation_arrays,
             epochs=epochs,
             batch_size=batch_size,
             callbacks=callbacks,
             verbose=verbose,
         )
 
-    def predict(self, X: np.ndarray) -> np.ndarray:
+    def predict(self, data: pd.DataFrame, verbose: int = 0) -> pd.DataFrame:
         """Make predictions on new data.
 
         Args:
@@ -234,107 +141,33 @@ class Sc2LSTM:
             Predicted probabilities for each timestamp
 
         """
-        if self.model is None:
-            raise ValueError("Model not trained. Call train() first.")
+        data = data.copy()
+        data.sort_values(by=[self.unique_id, self.timestamp], inplace=True)
+        groups = data.groupby(self.unique_id)
+        dataframes = []
+        for group in groups:
+            new_df = group[1][[self.unique_id, self.timestamp]].copy()
+            reshaped_features = self.get_feature_array(group[1])
+            preds = self.model.predict(reshaped_features, verbose=verbose)
+            new_df["predictions"] = preds[0, :, 0]
+            dataframes.append(new_df)
 
-        return self.model.predict(X)
+        return pd.concat(dataframes)
 
-    def predict_from_dataframe(
-        self,
-        df: pd.DataFrame,
-        feature_columns: list[str],
-        id_column: str = "filehash",
-    ) -> dict[str, np.ndarray]:
-        """Make predictions on new data from a DataFrame.
+    def evaluate(self, data: pd.DataFrame) -> dict:
+        """Evaluate the model on test data."""
 
-        Args:
-            df: DataFrame containing match data with id column to separate matches
-            feature_columns: List of column names to use as features
-            id_column: Name of the column that identifies different matches
-
-        Returns:
-            Dictionary mapping match_id to predicted probabilities for each timestamp
-
-        """
-        if self.model is None:
-            raise ValueError("Model not trained. Call train() first.")
-
-        # Group data by match id
-        match_groups = df.groupby(id_column)
-        
-        # Get unique match ids
-        match_ids = df[id_column].unique()
-        match_data = []
-        
-        # Process each match
-        for match_id in match_ids:
-            match_df = match_groups.get_group(match_id)
-            
-            # Extract features for this match
-            features = match_df[feature_columns].values
-            match_data.append(features)
-        
-        # Find the maximum sequence length from training (stored in scaler)
-        # We'll use the same max_length as was used during training
-        # For now, let's use the current max length from the data
-        max_length = max(len(match) for match in match_data)
-        n_features = len(feature_columns)
-        n_matches = len(match_data)
-
-        # Initialize array
-        X = np.zeros((n_matches, max_length, n_features))
-
-        # Process each match
-        for i, match in enumerate(match_data):
-            match_length = len(match)
-            # Pad sequences to max_length (pad with zeros at the end)
-            X[i, :match_length, :] = match
-
-        # Normalize features using the existing scaler
-        X_reshaped = X.reshape(-1, n_features)
-        X_scaled = self.scaler.transform(X_reshaped)
-        X = X_scaled.reshape(n_matches, max_length, n_features)
-
-        # Make predictions
-        predictions = self.model.predict(X)
-        
-        # Return as dictionary mapping match_id to predictions
-        result = {}
-        for i, match_id in enumerate(match_ids):
-            result[match_id] = predictions[i]
-            
-        return result
-
-    def evaluate(self, X_test: np.ndarray, y_test: np.ndarray) -> dict:
-        """Evaluate the model on test data.
-
-        Args:
-            X_test: Test features
-            y_test: Test targets
-
-        Returns:
-            Dictionary of evaluation metrics
-
-        """
-        if self.model is None:
-            raise ValueError("Model not trained. Call train() first.")
+        X_test = self.get_feature_array(data)
+        y_test = self.get_target_array(data)
 
         # Calculate metrics across all timestamps
-        test_loss, test_acc, test_precision, test_recall = self.model.evaluate(
+        test_loss, test_acc = self.model.evaluate(
             X_test, y_test, verbose=0
-        )
-
-        # Calculate F1 score
-        f1_score = (
-            2 * (test_precision * test_recall) / (test_precision + test_recall + 1e-7)
         )
 
         return {
             "test_loss": test_loss,
-            "test_accuracy": test_acc,
-            "test_precision": test_precision,
-            "test_recall": test_recall,
-            "test_f1_score": f1_score,
+            "test_AUC": test_acc,
         }
 
     def plot_training_history(self) -> None:
@@ -342,49 +175,27 @@ class Sc2LSTM:
         if self.history is None:
             raise ValueError("No training history available. Train the model first.")
 
-        fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+        fig, axes = plt.subplots(2, 1, figsize=(15, 10))
 
         # Loss
-        axes[0, 0].plot(self.history.history["loss"], label="Training Loss")
+        axes[0].plot(self.history.history["loss"], label="Training Loss")
         if "val_loss" in self.history.history:
-            axes[0, 0].plot(self.history.history["val_loss"], label="Validation Loss")
-        axes[0, 0].set_title("Model Loss")
-        axes[0, 0].set_xlabel("Epoch")
-        axes[0, 0].set_ylabel("Loss")
-        axes[0, 0].legend()
+            axes[0].plot(self.history.history["val_loss"], label="Validation Loss")
+        axes[0].set_title("Model Loss")
+        axes[0].set_xlabel("Epoch")
+        axes[0].set_ylabel("Loss")
+        axes[0].legend()
 
-        # Accuracy
-        axes[0, 1].plot(self.history.history["accuracy"], label="Training Accuracy")
-        if "val_accuracy" in self.history.history:
-            axes[0, 1].plot(
-                self.history.history["val_accuracy"], label="Validation Accuracy"
+        # AUC
+        axes[1].plot(self.history.history["AUC"], label="Training AUC")
+        if "val_AUC" in self.history.history:
+            axes[1].plot(
+                self.history.history["val_AUC"], label="Validation AUC"
             )
-        axes[0, 1].set_title("Model Accuracy")
-        axes[0, 1].set_xlabel("Epoch")
-        axes[0, 1].set_ylabel("Accuracy")
-        axes[0, 1].legend()
-
-        # Precision
-        axes[1, 0].plot(self.history.history["precision"], label="Training Precision")
-        if "val_precision" in self.history.history:
-            axes[1, 0].plot(
-                self.history.history["val_precision"], label="Validation Precision"
-            )
-        axes[1, 0].set_title("Model Precision")
-        axes[1, 0].set_xlabel("Epoch")
-        axes[1, 0].set_ylabel("Precision")
-        axes[1, 0].legend()
-
-        # Recall
-        axes[1, 1].plot(self.history.history["recall"], label="Training Recall")
-        if "val_recall" in self.history.history:
-            axes[1, 1].plot(
-                self.history.history["val_recall"], label="Validation Recall"
-            )
-        axes[1, 1].set_title("Model Recall")
-        axes[1, 1].set_xlabel("Epoch")
-        axes[1, 1].set_ylabel("Recall")
-        axes[1, 1].legend()
+        axes[1].set_title("Model AUC")
+        axes[1].set_xlabel("Epoch")
+        axes[1].set_ylabel("AUC")
+        axes[1].legend()
 
         plt.tight_layout()
         plt.show()
@@ -397,4 +208,4 @@ class Sc2LSTM:
 
     def load_model(self, filepath: str) -> None:
         """Load a trained model."""
-        self.model = tf.keras.models.load_model(filepath)
+        self.model = load_model(filepath)
